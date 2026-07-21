@@ -30,6 +30,21 @@ For iOS, copy `iosApp/Configuration/Local.xcconfig.example` to `iosApp/Configura
 
 Neither host may contain a Supabase service-role key. The publishable key and Sentry DSN are public client configuration, but they are still supplied outside source control so development and production environments remain separate.
 
+## Regenerate offline map data
+
+The committed map assets are deterministic derivatives of 2025 U.S. Census Bureau data. State boundaries use separate overview and close-detail files. Highway vectors keep only Interstate, U.S., and state routes, with national, regional, and one-degree close-detail levels.
+
+```sh
+python3 -m venv /tmp/roadtrippin-map-tools
+/tmp/roadtrippin-map-tools/bin/pip install -r tools/requirements-road-vectors.txt
+/tmp/roadtrippin-map-tools/bin/python tools/generate_highway_vectors.py \
+  shared/src/commonMain/composeResources/files/us_highways_2025.bin \
+  shared/src/commonMain/composeResources/files/us_highways_2025_manifest.json \
+  --cache-dir /tmp/roadtrippin-census-2025
+```
+
+The generated manifest records every source URL and digest, route counts by state, level/tile counts, and the binary asset digest.
+
 ## Build and test
 
 ```sh

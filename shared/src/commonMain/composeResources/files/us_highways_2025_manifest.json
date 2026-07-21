@@ -1,0 +1,656 @@
+{
+  "binary": {
+    "bytes": 3567600,
+    "labels": 15121,
+    "levels": [
+      {
+        "minimumScale": 1,
+        "roads": 6202,
+        "tileDegrees": 360,
+        "tiles": 1,
+        "toleranceDegrees": 0.035
+      },
+      {
+        "minimumScale": 8,
+        "roads": 40785,
+        "tileDegrees": 5,
+        "tiles": 51,
+        "toleranceDegrees": 0.012
+      },
+      {
+        "minimumScale": 20,
+        "roads": 123186,
+        "tileDegrees": 1,
+        "tiles": 974,
+        "toleranceDegrees": 0.002
+      }
+    ],
+    "sha256": "79a4ad0abb2a31fa7d029239685113cb5615f140d0d519fa91efb1b3ebe40129"
+  },
+  "quantization": 10000,
+  "routeTypes": [
+    "I",
+    "U",
+    "S"
+  ],
+  "source": "U.S. Census Bureau 2025 TIGER/Line Primary and Secondary Roads",
+  "sources": {
+    "AK": {
+      "bytes": 1396541,
+      "sha256": "0164c0cc132404972b6b8e97c6babdaefeafc99e0705663cc451400b465f81ba",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_02_prisecroads.zip"
+    },
+    "AL": {
+      "bytes": 6404922,
+      "sha256": "e43196ea2a67b4d8eaed1906ba0fd6743d1ca472653dabd9c57d690b81b8e125",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_01_prisecroads.zip"
+    },
+    "AR": {
+      "bytes": 8189783,
+      "sha256": "0c181b8023c36e5fa7c9e9f62d4b2e453552b30da9989031ad7abc77404944b2",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_05_prisecroads.zip"
+    },
+    "AZ": {
+      "bytes": 2585481,
+      "sha256": "cbcea97b375bd62233b6ee6070c94b119e964f4bdf00eedc9ca3c90ae719d0bd",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_04_prisecroads.zip"
+    },
+    "CA": {
+      "bytes": 12776420,
+      "sha256": "79d8485a0ed8e1971390efb55f4e832e449c857a28be97db1ded3850b9f5f8cf",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_06_prisecroads.zip"
+    },
+    "CO": {
+      "bytes": 3959651,
+      "sha256": "1f7ebfad36d1cc13d892b8db3911a51adbc5ff9c4d75fe6d32cd94b4880cb6b8",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_08_prisecroads.zip"
+    },
+    "CT": {
+      "bytes": 3699350,
+      "sha256": "c4d783d7ae271d63b8f3ac70c4f17a229469117ef633f88f40020dc19b745698",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_09_prisecroads.zip"
+    },
+    "DC": {
+      "bytes": 82744,
+      "sha256": "e2de714bdd27dd7a79bed4416cec14273b04936a0a5f691afbe8e2c930ee9288",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_11_prisecroads.zip"
+    },
+    "DE": {
+      "bytes": 1227712,
+      "sha256": "702366d39de6b7c5dd55d85ead0f3250033da621652f6e733678880f802a9e3b",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_10_prisecroads.zip"
+    },
+    "FL": {
+      "bytes": 8559096,
+      "sha256": "4aed3d13d94f1e3433839b3ce9b7b07c9b919b214bd93b6254cbb6dfb479d166",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_12_prisecroads.zip"
+    },
+    "GA": {
+      "bytes": 10138124,
+      "sha256": "172a11c5d7bc9d17b125868d43af418cbf734d4c6d9f6f7168f0e215bddc93cd",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_13_prisecroads.zip"
+    },
+    "HI": {
+      "bytes": 1494761,
+      "sha256": "1814a94b6857d749c81559a984eb2e7fed78ab9b6896ffd622b4495984240293",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_15_prisecroads.zip"
+    },
+    "IA": {
+      "bytes": 3096571,
+      "sha256": "687b91fb8f2ef234fdc9d1ec949ce9b3f8ae4c63ce03415ea00573121df139de",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_19_prisecroads.zip"
+    },
+    "ID": {
+      "bytes": 2097445,
+      "sha256": "1a728ce252d64e1cf14f80683bc1d4b9f998c7b8f7ce07f4d4607cc4c5e169cc",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_16_prisecroads.zip"
+    },
+    "IL": {
+      "bytes": 6958097,
+      "sha256": "f0852da8f07689189b4cd8d202e9da452326e4234ff49ddea31d3ea3573a4bb4",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_17_prisecroads.zip"
+    },
+    "IN": {
+      "bytes": 6123420,
+      "sha256": "d6193f990a73982df887a9c16f48bd7c614146906404ac091ec91f4b0d5317ce",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_18_prisecroads.zip"
+    },
+    "KS": {
+      "bytes": 3050767,
+      "sha256": "e227b9f9cab383420e26efc90b0c093ff41a010ca1fa0a07e41938da201bd800",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_20_prisecroads.zip"
+    },
+    "KY": {
+      "bytes": 24214739,
+      "sha256": "a0c703e78262ed2fa631305a930b27b21c22930664598558f3f69683d2dea78b",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_21_prisecroads.zip"
+    },
+    "LA": {
+      "bytes": 8600527,
+      "sha256": "e284ed7e8937157d5da4efd1728a1b6a03409c33263db531fb01a3f51515bc55",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_22_prisecroads.zip"
+    },
+    "MA": {
+      "bytes": 4501832,
+      "sha256": "59cea676388e5c14bc19796fb45047e15c15c10d3e2f05a1b763feed0f740d42",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_25_prisecroads.zip"
+    },
+    "MD": {
+      "bytes": 5240557,
+      "sha256": "f7651ff470980f567454d4f6357542d0ab442084f961de11c8887924eff73d76",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_24_prisecroads.zip"
+    },
+    "ME": {
+      "bytes": 5470949,
+      "sha256": "7d66dd55eda92de357c6a0c87f452fec09a867451f2c03d0f3f4302978d3b941",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_23_prisecroads.zip"
+    },
+    "MI": {
+      "bytes": 3298039,
+      "sha256": "d5e388e53d871aca8c230921454555da328905a688bf45ad7c8aaad6f908eb67",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_26_prisecroads.zip"
+    },
+    "MN": {
+      "bytes": 4058931,
+      "sha256": "dd87b5ad647c6efa8f822651d2457e8043d9090f7eb3a400b2d4de2d5a3fa342",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_27_prisecroads.zip"
+    },
+    "MO": {
+      "bytes": 6062021,
+      "sha256": "a6e4dd2df027908fbd5a1c2a2c0500b7864d43f557e20e90751f49c1e26d4d74",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_29_prisecroads.zip"
+    },
+    "MS": {
+      "bytes": 5949668,
+      "sha256": "afb49e6a20a28df944e3aca2e2a1b0967dff151829e386cdeb61dc583e189ea3",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_28_prisecroads.zip"
+    },
+    "MT": {
+      "bytes": 2617735,
+      "sha256": "0c7c1d7af2436f56ae61fe9ae57f02f0f304b05254d5e54bcf4d21c8e23c5b99",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_30_prisecroads.zip"
+    },
+    "NC": {
+      "bytes": 10340716,
+      "sha256": "cce2cbc384adf5f0158cee51ef6c312ba277ab939809d2d02ba1aca1e21fdb51",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_37_prisecroads.zip"
+    },
+    "ND": {
+      "bytes": 1859330,
+      "sha256": "eda6c94392d352e8d4fd86422080e12511e32b410fd7516d0d56cdeb2e4e9eba",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_38_prisecroads.zip"
+    },
+    "NE": {
+      "bytes": 2506970,
+      "sha256": "26afda8ad38b0c270b08ef6242271d4128736b191ad1527b738adfb53203d2ed",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_31_prisecroads.zip"
+    },
+    "NH": {
+      "bytes": 2567398,
+      "sha256": "dabe081a28e065598e395f2f81ace44204d30498820133ac761fcec434e7545f",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_33_prisecroads.zip"
+    },
+    "NJ": {
+      "bytes": 2390964,
+      "sha256": "3a539b3ec10fae675c7215086be9da06714f78ddcf3c753a39c6d2f8af24daf7",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_34_prisecroads.zip"
+    },
+    "NM": {
+      "bytes": 3950948,
+      "sha256": "b2aa1cc17c3d0e623aed7dfd1ec9ad5ac4db4f123f3188737adeeb5366951f7a",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_35_prisecroads.zip"
+    },
+    "NV": {
+      "bytes": 2044950,
+      "sha256": "0dbf3fdc4c666e3f9c20d097fe1d49d6ecef129c0dc117b40e54dc3e642e8652",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_32_prisecroads.zip"
+    },
+    "NY": {
+      "bytes": 8182789,
+      "sha256": "f96453fdc03029be40d78203559e8833f34fa79d006d8d35901ed58340661a2f",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_36_prisecroads.zip"
+    },
+    "OH": {
+      "bytes": 10502177,
+      "sha256": "865913308b530235fb2bea969eba19d36b3769df248366ff2e61a768b3b6b08b",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_39_prisecroads.zip"
+    },
+    "OK": {
+      "bytes": 4592624,
+      "sha256": "bb6921db25bc03f0321ccadcdb5ac9b709a837369ebb66234ce55bb1390f2a27",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_40_prisecroads.zip"
+    },
+    "OR": {
+      "bytes": 5906378,
+      "sha256": "0901d1af70d2150fea90b09db30407dddb6ab0bc3aa6a6175798c60bceba7b67",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_41_prisecroads.zip"
+    },
+    "PA": {
+      "bytes": 15501240,
+      "sha256": "fdeed89517877a3be8f3e692dc1ba1794e6f90da382fa528bce67ec44451a00e",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_42_prisecroads.zip"
+    },
+    "RI": {
+      "bytes": 839408,
+      "sha256": "c22789c4753b253bd83642a36944c036999c7d869c4cf278be4b25130039472b",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_44_prisecroads.zip"
+    },
+    "SC": {
+      "bytes": 7083901,
+      "sha256": "068f6e302458122441dfa1c53f6b78e971ab2564e06cdcf42da1fc48ccd22eae",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_45_prisecroads.zip"
+    },
+    "SD": {
+      "bytes": 3207046,
+      "sha256": "ff120346ad861fcbccefb9dcf15ddfd04987d11fd410f5209f5446063fee0207",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_46_prisecroads.zip"
+    },
+    "TN": {
+      "bytes": 14126658,
+      "sha256": "4fcc9893c002af72ec0ef3608d86303171a798710ae2720768883ed59e9e653d",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_47_prisecroads.zip"
+    },
+    "TX": {
+      "bytes": 12161852,
+      "sha256": "ab9b94248f46577b22e3bc87acdf03d1d7b988d93a7d4b6a32d46b9fc9edb56a",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_48_prisecroads.zip"
+    },
+    "UT": {
+      "bytes": 2678643,
+      "sha256": "b736ecd5c107f39fa272ffa45b93231d8d20ee2bcf1ec0924669d6e6edfba7c1",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_49_prisecroads.zip"
+    },
+    "VA": {
+      "bytes": 10546945,
+      "sha256": "13930357044ab577aa7f3e77fa4f361ccc2882ef4d8437534724098d7031af44",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_51_prisecroads.zip"
+    },
+    "VT": {
+      "bytes": 1896608,
+      "sha256": "dc904d7bb3161397eea234f110227293f6292e385b66fb122d518bf6aa368b86",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_50_prisecroads.zip"
+    },
+    "WA": {
+      "bytes": 3961341,
+      "sha256": "a2e2e66452b4a991e4252ff18a66222bc09ba0073b57ca26d36e95e6fd0cb092",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_53_prisecroads.zip"
+    },
+    "WI": {
+      "bytes": 5257602,
+      "sha256": "9f0ecc924f87dc2e4d6816b085047e867a1c6e217c50a15a4c0ea62ba617e6e4",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_55_prisecroads.zip"
+    },
+    "WV": {
+      "bytes": 6427333,
+      "sha256": "e6b66d18976073d385a7df3e9485aae690e8227fd81f9016cd3887a106972bfc",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_54_prisecroads.zip"
+    },
+    "WY": {
+      "bytes": 2613637,
+      "sha256": "9310a7852a0d7b3a678ebc51583e8766948772679a01e61b64903621033c648f",
+      "url": "https://www2.census.gov/geo/tiger/TIGER2025/PRISECROADS/tl_2025_56_prisecroads.zip"
+    }
+  },
+  "stateCounts": {
+    "AK": {
+      "I": 0,
+      "S": 93,
+      "U": 0,
+      "chunks": 149
+    },
+    "AL": {
+      "I": 116,
+      "S": 2172,
+      "U": 1021,
+      "chunks": 4791
+    },
+    "AR": {
+      "I": 79,
+      "S": 1778,
+      "U": 703,
+      "chunks": 3677
+    },
+    "AZ": {
+      "I": 71,
+      "S": 430,
+      "U": 168,
+      "chunks": 1115
+    },
+    "CA": {
+      "I": 251,
+      "S": 2586,
+      "U": 306,
+      "chunks": 4341
+    },
+    "CO": {
+      "I": 125,
+      "S": 631,
+      "U": 702,
+      "chunks": 2600
+    },
+    "CT": {
+      "I": 48,
+      "S": 841,
+      "U": 267,
+      "chunks": 1586
+    },
+    "DC": {
+      "I": 20,
+      "S": 2,
+      "U": 65,
+      "chunks": 192
+    },
+    "DE": {
+      "I": 6,
+      "S": 292,
+      "U": 77,
+      "chunks": 467
+    },
+    "FL": {
+      "I": 142,
+      "S": 2925,
+      "U": 1212,
+      "chunks": 6072
+    },
+    "GA": {
+      "I": 201,
+      "S": 4092,
+      "U": 1504,
+      "chunks": 8201
+    },
+    "HI": {
+      "I": 9,
+      "S": 357,
+      "U": 0,
+      "chunks": 413
+    },
+    "IA": {
+      "I": 84,
+      "S": 758,
+      "U": 877,
+      "chunks": 2903
+    },
+    "ID": {
+      "I": 89,
+      "S": 224,
+      "U": 267,
+      "chunks": 1134
+    },
+    "IL": {
+      "I": 311,
+      "S": 2123,
+      "U": 896,
+      "chunks": 5134
+    },
+    "IN": {
+      "I": 206,
+      "S": 2248,
+      "U": 944,
+      "chunks": 5039
+    },
+    "KS": {
+      "I": 96,
+      "S": 810,
+      "U": 807,
+      "chunks": 2900
+    },
+    "KY": {
+      "I": 124,
+      "S": 4577,
+      "U": 1187,
+      "chunks": 7663
+    },
+    "LA": {
+      "I": 110,
+      "S": 2901,
+      "U": 649,
+      "chunks": 4785
+    },
+    "MA": {
+      "I": 112,
+      "S": 1845,
+      "U": 433,
+      "chunks": 3081
+    },
+    "MD": {
+      "I": 120,
+      "S": 1744,
+      "U": 254,
+      "chunks": 2729
+    },
+    "ME": {
+      "I": 32,
+      "S": 1392,
+      "U": 401,
+      "chunks": 2411
+    },
+    "MI": {
+      "I": 231,
+      "S": 899,
+      "U": 474,
+      "chunks": 2744
+    },
+    "MN": {
+      "I": 110,
+      "S": 1164,
+      "U": 660,
+      "chunks": 3078
+    },
+    "MO": {
+      "I": 241,
+      "S": 1891,
+      "U": 991,
+      "chunks": 4881
+    },
+    "MS": {
+      "I": 111,
+      "S": 1479,
+      "U": 499,
+      "chunks": 3004
+    },
+    "MT": {
+      "I": 106,
+      "S": 209,
+      "U": 313,
+      "chunks": 1336
+    },
+    "NC": {
+      "I": 201,
+      "S": 2014,
+      "U": 2099,
+      "chunks": 7175
+    },
+    "ND": {
+      "I": 59,
+      "S": 368,
+      "U": 178,
+      "chunks": 1047
+    },
+    "NE": {
+      "I": 40,
+      "S": 669,
+      "U": 570,
+      "chunks": 2064
+    },
+    "NH": {
+      "I": 29,
+      "S": 809,
+      "U": 213,
+      "chunks": 1392
+    },
+    "NJ": {
+      "I": 179,
+      "S": 772,
+      "U": 376,
+      "chunks": 2112
+    },
+    "NM": {
+      "I": 78,
+      "S": 807,
+      "U": 444,
+      "chunks": 2136
+    },
+    "NV": {
+      "I": 35,
+      "S": 315,
+      "U": 206,
+      "chunks": 972
+    },
+    "NY": {
+      "I": 245,
+      "S": 2488,
+      "U": 442,
+      "chunks": 4402
+    },
+    "OH": {
+      "I": 229,
+      "S": 2796,
+      "U": 958,
+      "chunks": 5730
+    },
+    "OK": {
+      "I": 134,
+      "S": 1400,
+      "U": 1168,
+      "chunks": 4330
+    },
+    "OR": {
+      "I": 58,
+      "S": 585,
+      "U": 340,
+      "chunks": 1598
+    },
+    "PA": {
+      "I": 250,
+      "S": 2953,
+      "U": 1191,
+      "chunks": 6480
+    },
+    "RI": {
+      "I": 16,
+      "S": 420,
+      "U": 108,
+      "chunks": 689
+    },
+    "SC": {
+      "I": 110,
+      "S": 1521,
+      "U": 1022,
+      "chunks": 4125
+    },
+    "SD": {
+      "I": 56,
+      "S": 480,
+      "U": 336,
+      "chunks": 1434
+    },
+    "TN": {
+      "I": 178,
+      "S": 3149,
+      "U": 1507,
+      "chunks": 7048
+    },
+    "TX": {
+      "I": 523,
+      "S": 4105,
+      "U": 3502,
+      "chunks": 13303
+    },
+    "UT": {
+      "I": 69,
+      "S": 452,
+      "U": 135,
+      "chunks": 1071
+    },
+    "VA": {
+      "I": 289,
+      "S": 1926,
+      "U": 1958,
+      "chunks": 6935
+    },
+    "VT": {
+      "I": 26,
+      "S": 410,
+      "U": 161,
+      "chunks": 875
+    },
+    "WA": {
+      "I": 59,
+      "S": 1011,
+      "U": 277,
+      "chunks": 1872
+    },
+    "WI": {
+      "I": 107,
+      "S": 1786,
+      "U": 663,
+      "chunks": 3721
+    },
+    "WV": {
+      "I": 62,
+      "S": 819,
+      "U": 458,
+      "chunks": 2080
+    },
+    "WY": {
+      "I": 40,
+      "S": 311,
+      "U": 270,
+      "chunks": 1156
+    }
+  },
+  "states": [
+    "AK",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "ID",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "ME",
+    "MI",
+    "MN",
+    "MO",
+    "MS",
+    "MT",
+    "NC",
+    "ND",
+    "NE",
+    "NH",
+    "NJ",
+    "NM",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VA",
+    "VT",
+    "WA",
+    "WI",
+    "WV",
+    "WY"
+  ],
+  "year": 2025
+}

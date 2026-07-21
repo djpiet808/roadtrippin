@@ -7,6 +7,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -63,7 +65,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
@@ -77,7 +81,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -99,7 +105,9 @@ import com.roadtrippin.shared.domain.SyncState
 import com.roadtrippin.shared.domain.TagQuantity
 import com.roadtrippin.shared.domain.Trip
 import com.roadtrippin.shared.platform.PlatformServices
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import roadtrippin.shared.generated.resources.Res
@@ -715,18 +723,38 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
     val trip = store.activeTrip ?: return
     val scope = rememberCoroutineScope()
     val seen = trip.sightings.mapTo(mutableSetOf()) { it.jurisdictionCode }
+    var overviewVectorData by remember { mutableStateOf<StateVectorData?>(null) }
     var vectorData by remember { mutableStateOf<StateVectorData?>(null) }
+    var highwayData by remember { mutableStateOf<HighwayVectorData?>(null) }
     var loadFailed by remember { mutableStateOf(false) }
+    var highwayLoadFailed by remember { mutableStateOf(false) }
     var selectedStateCode by remember { mutableStateOf<String?>(null) }
     var selectedEntryId by remember { mutableStateOf<String?>(null) }
     var editingEntryId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         runCatching {
-            vectorJson.decodeFromString<StateVectorData>(
-                Res.readBytes("files/us_states_20m.json").decodeToString()
-            )
-        }.onSuccess { vectorData = it }.onFailure { loadFailed = true }
+            withContext(Dispatchers.Default) {
+                Pair(
+                    vectorJson.decodeFromString<StateVectorData>(
+                        Res.readBytes("files/us_states_20m.json").decodeToString()
+                    ),
+                    vectorJson.decodeFromString<StateVectorData>(
+                        Res.readBytes("files/us_states_5m.json").decodeToString()
+                    ),
+                )
+            }
+        }.onSuccess {
+            overviewVectorData = it.first
+            vectorData = it.second
+        }.onFailure { loadFailed = true }
+    }
+    LaunchedEffect(Unit) {
+        runCatching {
+            withContext(Dispatchers.Default) {
+                decodeHighwayVectors(Res.readBytes("files/us_highways_2025.bin"))
+            }
+        }.onSuccess { highwayData = it }.onFailure { highwayLoadFailed = true }
     }
 
     Column(Modifier.fillMaxSize().padding(padding)) {
@@ -737,9 +765,12 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
             modifier = Modifier.padding(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 10.dp),
         )
         when {
-            vectorData != null -> {
+            vectorData != null && overviewVectorData != null -> {
                 CombinedTripMap(
                     data = vectorData!!,
+                    overviewData = overviewVectorData!!,
+                    highways = highwayData,
+                    highwaysUnavailable = highwayLoadFailed,
                     trip = trip,
                     selectedStateCode = selectedStateCode,
                     selectedEntryId = selectedEntryId,
@@ -755,7 +786,7 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
                     onShare = {
                         PlatformServices.shareMapImage(
                             title = "${trip.displayName} map",
-                            svg = buildShareMapSvg(vectorData!!, trip),
+                            svg = buildShareMapSvg(overviewVectorData!!, trip),
                             summary = "${trip.displayName}: ${seen.size} of 53 Roadtrippin plates spotted and ${trip.journal.size} journal entries. Precise locations are not included.",
                         )
                     },
@@ -820,9 +851,143 @@ private data class StatePolygon(
 
 private val vectorJson = Json { ignoreUnknownKeys = true }
 
+private data class StateDrawPath(
+    val code: String,
+    val path: Path,
+    val bounds: Rect,
+)
+
+private data class HighwayLabelCandidate(
+    val text: String,
+    val position: Offset,
+)
+
+private data class HighwayRenderCacheKey(
+    val minimumScale: Float,
+    val tileX: Int,
+    val tileY: Int,
+)
+
+private data class HighwayMapLabel(
+    val labelIndex: Int,
+    val highwayClass: HighwayClass,
+    val position: Offset,
+)
+
+private data class HighwayRenderTile(
+    val paths: Array<Path>,
+    val labels: List<HighwayMapLabel>,
+)
+
+private fun buildHighwayRenderTile(
+    tile: HighwayTile,
+    data: HighwayVectorData,
+    width: Float,
+    height: Float,
+): HighwayRenderTile {
+    val paths = Array(HighwayClass.entries.size) { Path() }
+    val labels = mutableListOf<HighwayMapLabel>()
+    val labelCells = mutableSetOf<String>()
+    tile.roads.forEach { road ->
+        val path = paths[road.highwayClass.ordinal]
+        var pointIndex = 0
+        while (pointIndex < road.coordinates.size) {
+            val point = projectNorthAmerica(
+                latitude = road.coordinates[pointIndex + 1].toDouble() / data.quantization,
+                longitude = road.coordinates[pointIndex].toDouble() / data.quantization,
+                width = width,
+                height = height,
+            )
+            if (pointIndex == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
+            pointIndex += 2
+        }
+        if (road.labelIndex > 0) {
+            val middle = ((road.coordinates.size / 2) / 2) * 2
+            val longitude = road.coordinates[middle].toDouble() / data.quantization
+            val latitude = road.coordinates[middle + 1].toDouble() / data.quantization
+            val labelCell = "${road.labelIndex}:${(longitude * 2).roundToInt()}:${(latitude * 2).roundToInt()}"
+            if (labelCells.add(labelCell)) {
+                labels += HighwayMapLabel(
+                    labelIndex = road.labelIndex,
+                    highwayClass = road.highwayClass,
+                    position = projectNorthAmerica(latitude, longitude, width, height),
+                )
+            }
+        }
+    }
+    return HighwayRenderTile(paths, labels)
+}
+
+private fun buildStateDrawPaths(data: StateVectorData, width: Float, height: Float): List<StateDrawPath> {
+    if (width <= 0f || height <= 0f) return emptyList()
+    return data.states.map { state ->
+        val path = Path().apply { fillType = PathFillType.EvenOdd }
+        var left = Float.POSITIVE_INFINITY
+        var top = Float.POSITIVE_INFINITY
+        var right = Float.NEGATIVE_INFINITY
+        var bottom = Float.NEGATIVE_INFINITY
+        state.polygons.forEach { polygon ->
+            addNorthAmericaStateRing(path, state.code, polygon.outer, width, height)
+            polygon.holes.forEach { hole ->
+                addNorthAmericaStateRing(path, state.code, hole, width, height)
+            }
+            polygon.outer.forEach { point ->
+                val projected = projectNorthAmericaStatePoint(state.code, point[0], point[1], width, height)
+                left = minOf(left, projected.x)
+                top = minOf(top, projected.y)
+                right = maxOf(right, projected.x)
+                bottom = maxOf(bottom, projected.y)
+            }
+        }
+        StateDrawPath(state.code, path, Rect(left, top, right, bottom))
+    }
+}
+
+private fun minimumHighwayLabelScale(highwayClass: HighwayClass): Float = when (highwayClass) {
+    HighwayClass.INTERSTATE -> 4f
+    HighwayClass.US_ROUTE -> 10f
+    HighwayClass.STATE_ROUTE -> 24f
+}
+
+private fun visibleNorthAmericaBounds(
+    offset: Offset,
+    scale: Float,
+    width: Float,
+    height: Float,
+): HighwayBounds {
+    if (width <= 0f || height <= 0f) return HighwayBounds(-190.0, -50.0, 10.0, 75.0)
+    val left = -offset.x / scale
+    val right = (width - offset.x) / scale
+    val top = -offset.y / scale
+    val bottom = (height - offset.y) / scale
+    val west = -170.0 + left / width * 120.0
+    return HighwayBounds(
+        west = if (left <= 0.01f) -190.0 else west,
+        east = -170.0 + right / width * 120.0,
+        south = 75.0 - bottom / height * 65.0,
+        north = 75.0 - top / height * 65.0,
+    )
+}
+
+private fun mapCenterLatitude(offset: Offset, scale: Float, height: Int): Double {
+    if (height <= 0) return 39.5
+    val centerMapY = (height / 2f - offset.y) / scale
+    return (75.0 - centerMapY / height * 65.0).coerceIn(10.0, 75.0)
+}
+
+private fun visibleMapRect(offset: Offset, scale: Float, width: Float, height: Float): Rect = Rect(
+    left = -offset.x / scale,
+    top = -offset.y / scale,
+    right = (width - offset.x) / scale,
+    bottom = (height - offset.y) / scale,
+)
+
 @Composable
 private fun CombinedTripMap(
     data: StateVectorData,
+    overviewData: StateVectorData,
+    highways: HighwayVectorData?,
+    highwaysUnavailable: Boolean,
     trip: Trip,
     selectedStateCode: String?,
     selectedEntryId: String?,
@@ -839,13 +1004,35 @@ private fun CombinedTripMap(
     val selectedSighting = selectedStateCode?.let { code -> trip.sightings.firstOrNull { it.jurisdictionCode == code } }
     var mapScale by remember { mutableStateOf(1f) }
     var mapOffset by remember { mutableStateOf(Offset.Zero) }
+    var mapGestureActive by remember { mutableStateOf(false) }
     var mapCanvasSize by remember { mutableStateOf(IntSize.Zero) }
+    val stateDrawPaths = remember(data, mapCanvasSize) {
+        buildStateDrawPaths(data, mapCanvasSize.width.toFloat(), mapCanvasSize.height.toFloat())
+    }
+    val overviewStateDrawPaths = remember(overviewData, mapCanvasSize) {
+        buildStateDrawPaths(overviewData, mapCanvasSize.width.toFloat(), mapCanvasSize.height.toFloat())
+    }
+    val highwayRenderCache = remember(highways, mapCanvasSize) {
+        mutableMapOf<HighwayRenderCacheKey, HighwayRenderTile>()
+    }
+    val textMeasurer = rememberTextMeasurer(cacheSize = 256)
     val pinRadiusPx = with(LocalDensity.current) { 8.dp.toPx() }
     val dcRadiusPx = with(LocalDensity.current) { 6.dp.toPx() }
     val unseenFill = MaterialTheme.colorScheme.surfaceVariant
     val outline = MaterialTheme.colorScheme.outline.copy(alpha = .72f)
     val selectionColor = MaterialTheme.colorScheme.primary
-    val ocean = if (MaterialTheme.colorScheme.surface.luminance() < .5f) Color(0xFF18303C) else Color(0xFFDCEBF2)
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < .5f
+    val ocean = if (isDark) Color(0xFF18303C) else Color(0xFFDCEBF2)
+    val roadCasing = if (isDark) Color(0xFF172126) else Color(0xFFFFFCF4)
+    val interstateRoad = if (isDark) Color(0xFF83B4FF) else Color(0xFF2F67B1)
+    val usRouteRoad = if (isDark) Color(0xFFFFB36A) else Color(0xFFC65F18)
+    val stateRouteRoad = if (isDark) Color(0xFFC4CDD2) else Color(0xFF59666D)
+    val roadLabelBackground = if (isDark) Color(0xE6232E33) else Color(0xEEFFFDF7)
+    val roadLabelStyle = MaterialTheme.typography.labelSmall.copy(
+        color = MaterialTheme.colorScheme.onSurface,
+        fontWeight = FontWeight.Bold,
+        fontSize = 9.sp,
+    )
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
@@ -866,16 +1053,26 @@ private fun CombinedTripMap(
                 // Keep this detector alive for the entire touch sequence. Keying it to
                 // mapScale/mapOffset restarts it after every movement and cancels the drag.
                 .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        mapGestureActive = true
+                        do {
+                            val event = awaitPointerEvent()
+                        } while (event.changes.any { it.pressed })
+                        mapGestureActive = false
+                    }
+                }
+                .pointerInput(Unit) {
                     detectTransformGestures { centroid, pan, zoom, _ ->
                         val previousScale = mapScale
-                        val newScale = (previousScale * zoom).coerceIn(1f, 6f)
+                        val newScale = (previousScale * zoom).coerceIn(1f, MaxMapScale)
                         val ratio = newScale / previousScale
                         val candidate = centroid + (mapOffset - centroid) * ratio + pan
                         mapScale = newScale
                         mapOffset = clampMapOffset(candidate, newScale, size.width.toFloat(), size.height.toFloat())
                     }
                 }
-                .pointerInput(data, locatedEntries) {
+                .pointerInput(data, overviewData, locatedEntries) {
                     detectTapGestures { tap ->
                         val mapTap = Offset(
                             (tap.x - mapOffset.x) / mapScale,
@@ -892,7 +1089,7 @@ private fun CombinedTripMap(
                             onEntrySelected(journalHit.id)
                         } else {
                             findStateAtPoint(
-                                data = data,
+                                data = if (mapScale >= 20f) data else overviewData,
                                 point = mapTap,
                                 width = size.width.toFloat(),
                                 height = size.height.toFloat(),
@@ -903,6 +1100,56 @@ private fun CombinedTripMap(
                 }
         ) {
             val borderWidth = (size.minDimension / 540f).coerceAtLeast(.8f)
+            val viewportRect = visibleMapRect(mapOffset, mapScale, size.width, size.height)
+            val activeStatePaths = if (mapScale >= 20f) stateDrawPaths else overviewStateDrawPaths
+            val visibleStatePaths = activeStatePaths.filter { it.bounds.overlaps(viewportRect) }
+            val labelCandidates = Array(HighwayClass.entries.size) { mutableListOf<HighwayLabelCandidate>() }
+            val labelCandidateKeys = mutableSetOf<String>()
+            val highwayLabels = highways?.labels.orEmpty()
+            val highwayLevel = highways?.levelForScale(mapScale)
+            val visibleHighwayTiles = highways?.visibleTiles(
+                mapScale,
+                visibleNorthAmericaBounds(mapOffset, mapScale, size.width, size.height),
+            ).orEmpty()
+            val highwayRenderTiles = if (highways != null && highwayLevel != null) {
+                visibleHighwayTiles.map { tile ->
+                    val key = HighwayRenderCacheKey(highwayLevel.minimumScale, tile.x, tile.y)
+                    highwayRenderCache.getOrPut(key) {
+                        buildHighwayRenderTile(tile, highways, size.width, size.height)
+                    }
+                }
+            } else {
+                emptyList()
+            }
+            if (!mapGestureActive) highwayRenderTiles.forEach { renderTile ->
+                renderTile.labels.forEach { roadLabel ->
+                    val candidatesForClass = labelCandidates[roadLabel.highwayClass.ordinal]
+                    if (
+                        candidatesForClass.size < 160 &&
+                        mapScale >= minimumHighwayLabelScale(roadLabel.highwayClass)
+                    ) {
+                        val label = highwayLabels[roadLabel.labelIndex]
+                        if (label.isNotBlank()) {
+                            val screenPoint = Offset(
+                                roadLabel.position.x * mapScale + mapOffset.x,
+                                roadLabel.position.y * mapScale + mapOffset.y,
+                            )
+                            if (
+                                screenPoint.x in -40f..size.width + 40f &&
+                                screenPoint.y in -30f..size.height + 30f
+                            ) {
+                                val cellX = (screenPoint.x / 110.dp.toPx()).roundToInt()
+                                val cellY = (screenPoint.y / 54.dp.toPx()).roundToInt()
+                                val key = "${roadLabel.highwayClass.ordinal}:$cellX:$cellY"
+                                if (labelCandidateKeys.add(key)) {
+                                    candidatesForClass += HighwayLabelCandidate(label, screenPoint)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             withTransform({
                 translate(mapOffset.x, mapOffset.y)
                 scale(mapScale, mapScale, Offset.Zero)
@@ -917,22 +1164,41 @@ private fun CombinedTripMap(
                     val right = projectNorthAmerica(latitude, -50.0, size.width, size.height)
                     drawLine(outline.copy(alpha = .18f), left, right, borderWidth / mapScale)
                 }
-                data.states.forEach { state ->
-                    val jurisdiction = JurisdictionCatalog.byCode.getValue(state.code)
-                    val fill = if (state.code in seen) Color(jurisdiction.region.colorHex) else unseenFill
-                    state.polygons.forEach { polygon ->
-                        val path = Path().apply { fillType = PathFillType.EvenOdd }
-                        addNorthAmericaStateRing(path, state.code, polygon.outer, size.width, size.height)
-                        polygon.holes.forEach { hole ->
-                            addNorthAmericaStateRing(path, state.code, hole, size.width, size.height)
-                        }
-                        drawPath(path, fill)
+                visibleStatePaths.forEach { statePath ->
+                    val jurisdiction = JurisdictionCatalog.byCode.getValue(statePath.code)
+                    val fill = if (statePath.code in seen) Color(jurisdiction.region.colorHex) else unseenFill
+                    drawPath(statePath.path, fill)
+                }
+
+                val roadColors = arrayOf(interstateRoad, usRouteRoad, stateRouteRoad)
+                val roadWidths = floatArrayOf(2.5f, 2.05f, 1.55f)
+                val casingWidths = floatArrayOf(4.6f, 4f, 3.35f)
+                listOf(HighwayClass.STATE_ROUTE, HighwayClass.US_ROUTE, HighwayClass.INTERSTATE).forEach { highwayClass ->
+                    val index = highwayClass.ordinal
+                    highwayRenderTiles.forEach { renderTile ->
                         drawPath(
-                            path,
-                            if (state.code == selectedStateCode) selectionColor else outline,
-                            style = Stroke((if (state.code == selectedStateCode) borderWidth * 3f else borderWidth) / mapScale),
+                            renderTile.paths[index],
+                            roadCasing,
+                            style = Stroke(casingWidths[index].dp.toPx() / mapScale),
                         )
                     }
+                    highwayRenderTiles.forEach { renderTile ->
+                        drawPath(
+                            renderTile.paths[index],
+                            roadColors[index],
+                            style = Stroke(roadWidths[index].dp.toPx() / mapScale),
+                        )
+                    }
+                }
+
+                visibleStatePaths.forEach { statePath ->
+                    drawPath(
+                        statePath.path,
+                        if (statePath.code == selectedStateCode) selectionColor else outline,
+                        style = Stroke(
+                            (if (statePath.code == selectedStateCode) borderWidth * 3f else borderWidth) / mapScale,
+                        ),
+                    )
                 }
 
                 val dc = projectNorthAmerica(38.9072, -77.0369, size.width, size.height)
@@ -945,6 +1211,50 @@ private fun CombinedTripMap(
                     style = Stroke((if (selectedStateCode == "DC") 3.dp.toPx() else 1.5.dp.toPx()) / mapScale),
                 )
 
+            }
+
+            val occupiedLabelRects = mutableListOf<Rect>()
+            var labelsDrawn = 0
+            var labelsConsidered = 0
+            labelCandidates.forEach { candidates ->
+                candidates.forEach candidateLoop@{ candidate ->
+                    if (labelsDrawn >= 50 || labelsConsidered >= 90) return@candidateLoop
+                    labelsConsidered += 1
+                    val layout = textMeasurer.measure(candidate.text, style = roadLabelStyle)
+                    val horizontalPadding = 4.dp.toPx()
+                    val verticalPadding = 2.dp.toPx()
+                    val labelSize = Size(
+                        layout.size.width + horizontalPadding * 2,
+                        layout.size.height + verticalPadding * 2,
+                    )
+                    val topLeft = Offset(
+                        candidate.position.x - labelSize.width / 2,
+                        candidate.position.y - labelSize.height / 2,
+                    )
+                    val rect = Rect(topLeft, labelSize)
+                    val fullyVisible = rect.left >= 2f && rect.top >= 2f &&
+                        rect.right <= size.width - 2f && rect.bottom <= size.height - 2f
+                    if (fullyVisible && occupiedLabelRects.none { it.overlaps(rect) }) {
+                        drawRoundRect(
+                            color = roadLabelBackground,
+                            topLeft = topLeft,
+                            size = labelSize,
+                            cornerRadius = CornerRadius(4.dp.toPx()),
+                        )
+                        drawText(
+                            textLayoutResult = layout,
+                            topLeft = topLeft + Offset(horizontalPadding, verticalPadding),
+                        )
+                        occupiedLabelRects += rect
+                        labelsDrawn += 1
+                    }
+                }
+            }
+
+            withTransform({
+                translate(mapOffset.x, mapOffset.y)
+                scale(mapScale, mapScale, Offset.Zero)
+            }) {
                 locatedEntries.forEach { entry ->
                     val point = projectNorthAmericaLocation(entry, size.width, size.height)
                     val fill = if (entry.kind == JournalEntryKind.STOP) RoadOrange else Color(0xFF6E56CF)
@@ -966,14 +1276,14 @@ private fun CombinedTripMap(
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${(mapScale * 100).roundToInt()}% • ${locatedEntries.size} map pin${if (locatedEntries.size == 1) "" else "s"}",
+                "${(mapScale * 100).roundToInt()}% • ≈${approximateMapMilesAcross(mapScale, mapCenterLatitude(mapOffset, mapScale, mapCanvasSize.height))} mi • ${locatedEntries.size} pin${if (locatedEntries.size == 1) "" else "s"}",
                 Modifier.weight(1f),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             TextButton(
                 onClick = {
-                    val newScale = (mapScale - .75f).coerceAtLeast(1f)
+                    val newScale = nextMapScale(mapScale, zoomIn = false)
                     val center = Offset(mapCanvasSize.width / 2f, mapCanvasSize.height / 2f)
                     val candidate = center + (mapOffset - center) * (newScale / mapScale)
                     mapScale = newScale
@@ -982,7 +1292,7 @@ private fun CombinedTripMap(
                 enabled = mapScale > 1f,
             ) { Text("−", fontSize = 22.sp) }
             TextButton(onClick = {
-                val newScale = (mapScale + .75f).coerceAtMost(6f)
+                val newScale = nextMapScale(mapScale, zoomIn = true)
                 val center = Offset(mapCanvasSize.width / 2f, mapCanvasSize.height / 2f)
                 val candidate = center + (mapOffset - center) * (newScale / mapScale)
                 mapScale = newScale
@@ -994,6 +1304,13 @@ private fun CombinedTripMap(
                 onClick = { mapScale = 1f; mapOffset = Offset.Zero },
                 enabled = mapScale > 1f || mapOffset != Offset.Zero,
             ) { Text("Reset") }
+        }
+        if (highways == null) {
+            Text(
+                if (highwaysUnavailable) "Offline highway layer unavailable" else "Loading offline highways…",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         when {
@@ -1143,7 +1460,7 @@ internal fun pointInStateRing(
     return inside
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.addNorthAmericaStateRing(
+private fun addNorthAmericaStateRing(
     path: Path,
     code: String,
     coordinates: List<List<Double>>,

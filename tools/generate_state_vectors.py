@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert the Census 1:20m state KML into compact app vector data."""
+"""Convert the Census 1:5m state KML into compact app vector data."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ STATE_CODES = {
     "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 }
 KML = {"k": "http://www.opengis.net/kml/2.2"}
-SOURCE = "https://www2.census.gov/geo/tiger/GENZ2025/kml/cb_2025_us_state_20m.zip"
+SOURCE = "https://www2.census.gov/geo/tiger/GENZ2025/kml/cb_2025_us_state_5m.zip"
 
 
 def coordinates(element: ET.Element | None) -> list[list[float]]:
