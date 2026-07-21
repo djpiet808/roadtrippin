@@ -2,6 +2,7 @@ package com.roadtrippin.shared.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -69,6 +70,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -76,6 +78,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -90,6 +93,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.roadtrippin.shared.data.AppScreen
 import com.roadtrippin.shared.data.RoadtrippinStore
 import com.roadtrippin.shared.cloud.CloudServices
@@ -110,6 +114,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import roadtrippin.shared.generated.resources.Res
 import kotlin.math.roundToInt
 
@@ -475,6 +480,7 @@ fun JournalScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding:
     val trip = store.activeTrip ?: return
     val scope = rememberCoroutineScope()
     var showEditor by remember { mutableStateOf(false) }
+    var viewingEntryId by remember { mutableStateOf<String?>(null) }
     var editingEntryId by remember { mutableStateOf<String?>(null) }
     Box(Modifier.fillMaxSize().padding(padding)) {
         LazyColumn(
@@ -494,8 +500,7 @@ fun JournalScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding:
             items(trip.journal, key = { it.id }) { entry ->
                 JournalEntryCard(
                     entry = entry,
-                    onEdit = { editingEntryId = entry.id },
-                    onDelete = { store.deleteJournalEntry(entry.id) },
+                    onView = { viewingEntryId = entry.id },
                 )
             }
         }
@@ -526,6 +531,7 @@ fun JournalScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding:
                             tags = tags,
                             photos = photos,
                         )
+                        viewingEntryId = editingEntry.id
                         snackbar.showSnackbar("Journal entry updated")
                     } else {
                         val location = editedLocation.takeIf {
@@ -539,6 +545,7 @@ fun JournalScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding:
                                 }
                             }
                         }
+                        viewingEntryId = entryId
                         snackbar.showSnackbar(if (kind == JournalEntryKind.STOP) "Stop logged" else "Journal note saved")
                     }
                 }
@@ -547,30 +554,228 @@ fun JournalScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding:
             },
         )
     }
+    val viewingEntry = viewingEntryId?.let { id ->
+        store.activeTrip?.journal?.firstOrNull { it.id == id }
+    }
+    if (viewingEntry != null) {
+        JournalEntryViewerDialog(
+            entry = viewingEntry,
+            onDismiss = { viewingEntryId = null },
+            onEdit = {
+                viewingEntryId = null
+                editingEntryId = viewingEntry.id
+            },
+            onDelete = {
+                store.deleteJournalEntry(viewingEntry.id)
+                viewingEntryId = null
+            },
+        )
+    }
 }
 
 @Composable
-private fun JournalEntryCard(entry: JournalEntry, onEdit: () -> Unit, onDelete: () -> Unit) {
-    OutlinedCard(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onEdit)) {
+private fun JournalEntryCard(entry: JournalEntry, onView: () -> Unit) {
+    OutlinedCard(
+        Modifier.fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onView)
+            .semantics { contentDescription = "View ${journalEntryTitle(entry)}" },
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (entry.kind == JournalEntryKind.STOP) "📍" else "📝", fontSize = 24.sp)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(entry.title.ifBlank { if (entry.kind == JournalEntryKind.STOP) "Road stop" else "Road note" }, fontWeight = FontWeight.Bold)
+                    Text(journalEntryTitle(entry), fontWeight = FontWeight.Bold)
                     Text(PlatformServices.formatDateTime(entry.occurredAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                TextButton(onClick = onEdit) { Text("Edit") }
+                Text("View ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             }
-            if (entry.body.isNotBlank()) Text(entry.body)
+            if (entry.body.isNotBlank()) Text(entry.body, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (entry.location.placeName != null) Text("📌 ${entry.location.placeName}", color = MaterialTheme.colorScheme.primary)
             if (entry.tags.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     entry.tags.take(3).forEach { AssistChip(onClick = {}, label = { Text("${it.tag} ×${it.quantity}") }) }
                 }
             }
-            if (entry.photos.isNotEmpty()) Text("${entry.photos.size} photo${if (entry.photos.size == 1) "" else "s"}")
-            TextButton(onClick = onDelete) { Text("Delete entry", color = MaterialTheme.colorScheme.error) }
+            if (entry.photos.isNotEmpty()) Text("📷 ${entry.photos.size} photo${if (entry.photos.size == 1) "" else "s"}")
+        }
+    }
+}
+
+private fun journalEntryTitle(entry: JournalEntry): String =
+    entry.title.ifBlank { if (entry.kind == JournalEntryKind.STOP) "Road stop" else "Road note" }
+
+@Composable
+private fun JournalEntryViewerDialog(
+    entry: JournalEntry,
+    onDismiss: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    var selectedPhoto by remember(entry.id) { mutableStateOf<JournalPhoto?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(if (entry.kind == JournalEntryKind.STOP) "📍" else "📝", fontSize = 24.sp)
+                Spacer(Modifier.width(10.dp))
+                Text(journalEntryTitle(entry))
+            }
+        },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    PlatformServices.formatDateTime(entry.occurredAt),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                entry.location.placeName?.let { place ->
+                    Text("📌 $place", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                }
+                if (entry.body.isNotBlank()) {
+                    Text(entry.body, style = MaterialTheme.typography.bodyLarge)
+                }
+                if (entry.tags.isNotEmpty()) {
+                    Text(
+                        entry.tags.joinToString("  •  ") { "${it.tag} ×${it.quantity}" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (entry.photos.isNotEmpty()) {
+                    Text(
+                        "Photos",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    entry.photos.chunked(2).forEachIndexed { rowIndex, rowPhotos ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowPhotos.forEachIndexed { columnIndex, photo ->
+                                val photoNumber = rowIndex * 2 + columnIndex + 1
+                                JournalPhotoImage(
+                                    photo = photo,
+                                    contentDescription = "Photo $photoNumber of ${entry.photos.size}",
+                                    contentScale = ContentScale.Crop,
+                                    aspectRatio = 4f / 3f,
+                                    onClick = { selectedPhoto = photo },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            if (rowPhotos.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                    Text(
+                        "Tap a photo to view it larger.",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TextButton(onClick = onDelete) {
+                    Text("Delete entry", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onDismiss) { Text("Done") } },
+        dismissButton = { OutlinedButton(onClick = onEdit) { Text("Edit") } },
+    )
+    selectedPhoto?.let { photo ->
+        JournalPhotoViewerDialog(
+            photo = photo,
+            photoNumber = entry.photos.indexOfFirst { it.id == photo.id } + 1,
+            photoCount = entry.photos.size,
+            onDismiss = { selectedPhoto = null },
+        )
+    }
+}
+
+@Composable
+private fun JournalPhotoImage(
+    photo: JournalPhoto,
+    contentDescription: String,
+    contentScale: ContentScale,
+    aspectRatio: Float?,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    var bitmap by remember(photo.id, photo.localPath) { mutableStateOf<ImageBitmap?>(null) }
+    var loadFinished by remember(photo.id, photo.localPath) { mutableStateOf(false) }
+    LaunchedEffect(photo.id, photo.localPath) {
+        bitmap = runCatching {
+            PlatformServices.readLocalFile(photo.localPath)?.let { bytes ->
+                withContext(Dispatchers.Default) { bytes.decodeToImageBitmap() }
+            }
+        }.getOrNull()
+        loadFinished = true
+    }
+    val imageRatio = aspectRatio ?: bitmap?.let { image ->
+        (image.width.toFloat() / image.height.coerceAtLeast(1)).coerceIn(.6f, 1.8f)
+    } ?: 4f / 3f
+    val clickModifier = if (onClick != null) {
+        Modifier.clickable(role = Role.Button, onClick = onClick)
+    } else {
+        Modifier
+    }
+    Box(
+        modifier.aspectRatio(imageRatio)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .then(clickModifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            bitmap != null -> Image(
+                bitmap = bitmap!!,
+                contentDescription = contentDescription,
+                contentScale = contentScale,
+                modifier = Modifier.fillMaxSize(),
+            )
+            !loadFinished -> CircularProgressIndicator(Modifier.size(28.dp))
+            else -> Text(
+                "Photo unavailable",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun JournalPhotoViewerDialog(
+    photo: JournalPhoto,
+    photoNumber: Int,
+    photoCount: Int,
+    onDismiss: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Photo $photoNumber of $photoCount",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                JournalPhotoImage(
+                    photo = photo,
+                    contentDescription = "Photo $photoNumber of $photoCount, enlarged",
+                    contentScale = ContentScale.Fit,
+                    aspectRatio = null,
+                    onClick = null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = onDismiss) { Text("Close") }
+                }
+            }
         }
     }
 }
@@ -730,6 +935,7 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
     var highwayLoadFailed by remember { mutableStateOf(false) }
     var selectedStateCode by remember { mutableStateOf<String?>(null) }
     var selectedEntryId by remember { mutableStateOf<String?>(null) }
+    var viewingEntryId by remember { mutableStateOf<String?>(null) }
     var editingEntryId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -782,7 +988,7 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
                         selectedEntryId = entryId
                         selectedStateCode = null
                     },
-                    onEntryOpen = { editingEntryId = it },
+                    onEntryOpen = { viewingEntryId = it },
                     onShare = {
                         PlatformServices.shareMapImage(
                             title = "${trip.displayName} map",
@@ -804,6 +1010,25 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
         }
     }
 
+    val viewingEntry = viewingEntryId?.let { id ->
+        store.activeTrip?.journal?.firstOrNull { it.id == id }
+    }
+    if (viewingEntry != null) {
+        JournalEntryViewerDialog(
+            entry = viewingEntry,
+            onDismiss = { viewingEntryId = null },
+            onEdit = {
+                viewingEntryId = null
+                editingEntryId = viewingEntry.id
+            },
+            onDelete = {
+                store.deleteJournalEntry(viewingEntry.id)
+                selectedEntryId = null
+                viewingEntryId = null
+            },
+        )
+    }
+
     val editingEntry = editingEntryId?.let { id ->
         store.activeTrip?.journal?.firstOrNull { it.id == id }
     }
@@ -823,6 +1048,7 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
                         tags = tags,
                         photos = photos,
                     )
+                    viewingEntryId = editingEntry.id
                     snackbar.showSnackbar("Journal entry updated")
                 }
                 editingEntryId = null
