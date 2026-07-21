@@ -49,10 +49,10 @@ class JurisdictionCatalogTest {
             codes(Region.NORTHEAST),
         )
         assertEquals(
-            sortedSetOf("AR", "FL", "KY", "NC", "OK", "TN", "TX", "VA", "WV"),
+            sortedSetOf("AR", "KY", "NC", "OK", "TN", "TX", "VA", "WV"),
             codes(Region.SOUTH),
         )
-        assertEquals(sortedSetOf("AL", "GA", "LA", "MS", "SC"), codes(Region.DEEP_SOUTH))
+        assertEquals(sortedSetOf("AL", "FL", "GA", "LA", "MS", "SC"), codes(Region.DEEP_SOUTH))
         assertEquals(sortedSetOf("BC", "MX"), codes(Region.NON_US))
     }
 }

@@ -11,7 +11,7 @@ object JurisdictionCatalog {
         us("CT", "Connecticut", Region.NORTHEAST),
         us("DE", "Delaware", Region.NORTHEAST),
         us("DC", "District of Columbia", Region.NORTHEAST),
-        us("FL", "Florida", Region.SOUTH),
+        us("FL", "Florida", Region.DEEP_SOUTH),
         us("GA", "Georgia", Region.DEEP_SOUTH),
         us("HI", "Hawaii", Region.WEST),
         us("ID", "Idaho", Region.WEST),
