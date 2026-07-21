@@ -863,16 +863,19 @@ private fun CombinedTripMap(
                 .semantics {
                     contentDescription = "Combined offline trip map with ${seen.size} plates seen and ${locatedEntries.size} journal pins. Pinch to zoom, drag to pan, and tap a state or pin for details."
                 }
-                .pointerInput(data, trip.journal, mapScale, mapOffset) {
+                // Keep this detector alive for the entire touch sequence. Keying it to
+                // mapScale/mapOffset restarts it after every movement and cancels the drag.
+                .pointerInput(Unit) {
                     detectTransformGestures { centroid, pan, zoom, _ ->
-                        val newScale = (mapScale * zoom).coerceIn(1f, 6f)
-                        val ratio = newScale / mapScale
+                        val previousScale = mapScale
+                        val newScale = (previousScale * zoom).coerceIn(1f, 6f)
+                        val ratio = newScale / previousScale
                         val candidate = centroid + (mapOffset - centroid) * ratio + pan
                         mapScale = newScale
                         mapOffset = clampMapOffset(candidate, newScale, size.width.toFloat(), size.height.toFloat())
                     }
                 }
-                .pointerInput(data, trip.journal, mapScale, mapOffset) {
+                .pointerInput(data, locatedEntries) {
                     detectTapGestures { tap ->
                         val mapTap = Offset(
                             (tap.x - mapOffset.x) / mapScale,
