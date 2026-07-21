@@ -1,0 +1,92 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {};
+    objectVersion = 56;
+    objects = {
+
+/* Begin PBXBuildFile section */
+        A10000000000000000000001 /* RoadtrippinApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* RoadtrippinApp.swift */; };
+        A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* ContentView.swift */; };
+        A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+        A20000000000000000000001 /* RoadtrippinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoadtrippinApp.swift; sourceTree = "<group>"; };
+        A20000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+        A20000000000000000000003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+        A20000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+        A20000000000000000000005 /* Roadtrippin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Roadtrippin.entitlements; sourceTree = "<group>"; };
+        A20000000000000000000006 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+        A20000000000000000000007 /* Roadtrippin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Roadtrippin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+        A30000000000000000000001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+        A40000000000000000000001 = {isa = PBXGroup; children = (A40000000000000000000002 /* Configuration */, A40000000000000000000003 /* iosApp */, A40000000000000000000004 /* Products */); sourceTree = "<group>"; };
+        A40000000000000000000002 /* Configuration */ = {isa = PBXGroup; children = (A20000000000000000000006 /* Config.xcconfig */); path = Configuration; sourceTree = "<group>"; };
+        A40000000000000000000003 /* iosApp */ = {isa = PBXGroup; children = (A20000000000000000000001 /* RoadtrippinApp.swift */, A20000000000000000000002 /* ContentView.swift */, A20000000000000000000003 /* Assets.xcassets */, A20000000000000000000004 /* Info.plist */, A20000000000000000000005 /* Roadtrippin.entitlements */); path = iosApp; sourceTree = "<group>"; };
+        A40000000000000000000004 /* Products */ = {isa = PBXGroup; children = (A20000000000000000000007 /* Roadtrippin.app */); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+        A50000000000000000000001 /* iosApp */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = A90000000000000000000002;
+            buildPhases = (A70000000000000000000002 /* Prepare Sentry */, A70000000000000000000001 /* Compile Kotlin */, A60000000000000000000001 /* Sources */, A60000000000000000000002 /* Resources */, A30000000000000000000001 /* Frameworks */);
+            buildRules = ();
+            dependencies = ();
+            name = iosApp;
+            productName = Roadtrippin;
+            productReference = A20000000000000000000007 /* Roadtrippin.app */;
+            productType = "com.apple.product-type.application";
+        };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+        A50000000000000000000002 /* Project object */ = {
+            isa = PBXProject;
+            attributes = {LastSwiftUpdateCheck = 2600; LastUpgradeCheck = 2600; ORGANIZATIONNAME = "Bent Nail Studio"; TargetAttributes = {A50000000000000000000001 = {CreatedOnToolsVersion = 26.0;};};};
+            buildConfigurationList = A90000000000000000000001;
+            compatibilityVersion = "Xcode 14.0";
+            developmentRegion = en;
+            knownRegions = (en, Base);
+            mainGroup = A40000000000000000000001;
+            productRefGroup = A40000000000000000000004;
+            projectDirPath = "";
+            projectRoot = "";
+            targets = (A50000000000000000000001 /* iosApp */);
+        };
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+        A60000000000000000000002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003 /* Assets.xcassets in Resources */); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+        A70000000000000000000001 /* Compile Kotlin */ = {isa = PBXShellScriptBuildPhase; alwaysOutOfDate = 1; buildActionMask = 2147483647; files = (); inputFileListPaths = (); inputPaths = (); name = "Compile Kotlin"; outputFileListPaths = (); outputPaths = (); runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/sh; shellScript = "cd \"$SRCROOT/..\"\nexport JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n"; };
+        A70000000000000000000002 /* Prepare Sentry */ = {isa = PBXShellScriptBuildPhase; buildActionMask = 2147483647; files = (); inputFileListPaths = (); inputPaths = (); name = "Prepare Sentry"; outputFileListPaths = (); outputPaths = ("$(SRCROOT)/.build/sentry/Sentry.xcframework/Info.plist"); runOnlyForDeploymentPostprocessing = 0; shellPath = /bin/sh; shellScript = "\"$SRCROOT/Scripts/prepare_sentry.sh\"\n"; };
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+        A60000000000000000000001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* RoadtrippinApp.swift in Sources */, A10000000000000000000002 /* ContentView.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+        A80000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; ONLY_ACTIVE_ARCH = YES; SDKROOT = iphoneos; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone";}; name = Debug; };
+        A80000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; VALIDATE_PRODUCT = YES;}; name = Release; };
+        A80000000000000000000003 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = A20000000000000000000006; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_ENTITLEMENTS = iosApp/Roadtrippin.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "$(TEAM_ID)"; ENABLE_PREVIEWS = YES; "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64; "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = ("$(inherited)", "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)", "$(SRCROOT)/.build/sentry/Sentry.xcframework/ios-arm64_arm64e"); "FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]" = ("$(inherited)", "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)", "$(SRCROOT)/.build/sentry/Sentry.xcframework/ios-arm64_x86_64-simulator"); INFOPLIST_FILE = iosApp/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks"); OTHER_LDFLAGS = ("$(inherited)", "-framework", RoadtrippinShared, "-framework", Sentry, "-lc++"); PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID)"; PRODUCT_NAME = "$(APP_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SUPPORTS_MACCATALYST = NO; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = 1;}; name = Debug; };
+        A80000000000000000000004 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = A20000000000000000000006; buildSettings = {ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGN_ENTITLEMENTS = iosApp/Roadtrippin.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = "$(TEAM_ID)"; "EXCLUDED_ARCHS[sdk=iphonesimulator*]" = x86_64; "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]" = ("$(inherited)", "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)", "$(SRCROOT)/.build/sentry/Sentry.xcframework/ios-arm64_arm64e"); "FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]" = ("$(inherited)", "$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)", "$(SRCROOT)/.build/sentry/Sentry.xcframework/ios-arm64_x86_64-simulator"); INFOPLIST_FILE = iosApp/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks"); OTHER_LDFLAGS = ("$(inherited)", "-framework", RoadtrippinShared, "-framework", Sentry, "-lc++"); PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID)"; PRODUCT_NAME = "$(APP_NAME)"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SUPPORTS_MACCATALYST = NO; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = 1;}; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+        A90000000000000000000001 = {isa = XCConfigurationList; buildConfigurations = (A80000000000000000000001, A80000000000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+        A90000000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (A80000000000000000000003, A80000000000000000000004); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+
+    };
+    rootObject = A50000000000000000000002 /* Project object */;
+}

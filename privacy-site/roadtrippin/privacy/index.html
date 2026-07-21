@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Roadtrippin privacy policy and account deletion information."
+    />
+    <title>Roadtrippin Privacy Policy</title>
+    <link rel="stylesheet" href="/roadtrippin/privacy/privacy.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">✓</span>
+        <span>Bent Nail Studio</span>
+      </div>
+    </header>
+
+    <main id="content">
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">Roadtrippin</p>
+        <h1 id="page-title">Privacy Policy</h1>
+        <p class="lede">
+          Roadtrippin is designed for passengers to record license plates and road-trip memories,
+          including while offline. This policy explains what the app handles and the choices you
+          have.
+        </p>
+        <p class="effective">Effective July 20, 2026</p>
+      </section>
+
+      <article>
+        <section aria-labelledby="summary">
+          <h2 id="summary">The short version</h2>
+          <ul class="summary-list">
+            <li>Your trips remain available on your device without an account.</li>
+            <li>Cloud sync is optional and uses your shared Bent Nail Studio account.</li>
+            <li>Roadtrippin does not sell personal information or use behavioral advertising.</li>
+            <li>Shared results omit precise coordinates.</li>
+            <li>Deleting the shared account also deletes data in other apps using that account.</li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="information">
+          <h2 id="information">Information Roadtrippin handles</h2>
+          <h3>Trip and user content</h3>
+          <p>
+            You may provide trip names, destinations, travelers, vehicle details, notes, stops,
+            reusable tags and quantities, license-plate sightings, dates, times, and other
+            free-form content. This information may reveal details you choose to write about
+            yourself or other people.
+          </p>
+
+          <h3>Location</h3>
+          <p>
+            With your permission, Roadtrippin records precise latitude and longitude when you log
+            a plate, journal note, or stop. It may use the operating system’s geocoder to add a
+            readable place name. Roadtrippin does not continuously track your route. You can deny
+            location permission, enter or correct a place manually, and continue using the app.
+          </p>
+
+          <h3>Photos</h3>
+          <p>
+            You may attach photos from your camera or photo library to journal entries. Before
+            storage, Roadtrippin removes embedded EXIF metadata and resizes the image to a maximum
+            dimension of 2,048 pixels. Any location shown for a journal entry is stored separately
+            from the photo.
+          </p>
+
+          <h3>Account information</h3>
+          <p>
+            An account is optional. If you create or use one, authentication may process your email
+            address, password credential, verified-email status, provider identity, and basic
+            profile information supplied by Google or Apple. Passwords are handled by the
+            authentication provider and are not stored in Roadtrippin’s trip database.
+          </p>
+
+          <h3>Diagnostics</h3>
+          <p>
+            Roadtrippin uses Sentry to receive crash reports and nonfatal sync failures. Diagnostic
+            reports may include device and operating-system details, app version, error type, and
+            technical stack traces. Roadtrippin configures Sentry to remove email addresses, user
+            IDs, authentication tokens, coordinates, notes, tags, photo paths, request bodies, and
+            similar trip content. Session replay, behavioral analytics, advertising analytics, and
+            performance tracing are disabled for this beta.
+          </p>
+        </section>
+
+        <section aria-labelledby="use">
+          <h2 id="use">How information is used</h2>
+          <p>Roadtrippin uses information only to:</p>
+          <ul>
+            <li>save, display, edit, map, and share the trip records you request;</li>
+            <li>sync and restore your retained records when you choose cloud sync;</li>
+            <li>authenticate your optional account;</li>
+            <li>calculate achievements and progress; and</li>
+            <li>diagnose crashes, reliability problems, and sync failures.</li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="storage">
+          <h2 id="storage">Local storage, cloud sync, and service providers</h2>
+          <p>
+            The on-device database is the primary source for the app, so ordinary trip tracking
+            works offline. If you sign in and confirm an upload, Roadtrippin copies your retained
+            device trips and photos to Supabase. Supabase provides authentication, a protected
+            PostgreSQL database, and private photo storage. Sentry provides the scrubbed diagnostic
+            service described above. Google and Apple process sign-in information only when you
+            choose those providers.
+          </p>
+          <p>
+            Cloud records are protected by per-user access rules. Private journal photos are stored
+            under account- and trip-scoped paths. Roadtrippin does not place a service-role key in
+            the app.
+          </p>
+        </section>
+
+        <section aria-labelledby="sharing">
+          <h2 id="sharing">Sharing</h2>
+          <p>
+            Roadtrippin shares content only when you invoke the platform share sheet. A shared map
+            image or text summary may contain trip names, plate progress, readable place names, or
+            other content shown in the preview, but it never includes precise latitude and
+            longitude. The apps or people you select receive the shared result under their own
+            privacy practices.
+          </p>
+        </section>
+
+        <section aria-labelledby="retention">
+          <h2 id="retention">Retention and your choices</h2>
+          <p>
+            Local trip data remains on the device until you edit it, remove it, clear local app
+            data, uninstall the app, or complete shared-account deletion. Signing out does not erase
+            local trips. Synced information remains in your shared account until you remove the
+            applicable records or delete that account. Deleted cloud records and photos are removed
+            from active systems, although limited encrypted backups and security logs may persist
+            temporarily as required for recovery, fraud prevention, legal obligations, or platform
+            operations.
+          </p>
+          <p>
+            You can review and correct sightings, locations, journal entries, photos, trip details,
+            and other stored content in the app. You can also deny camera, photo-library, and
+            location access in system settings.
+          </p>
+        </section>
+
+        <section class="warning" aria-labelledby="deletion">
+          <p class="eyebrow">Important</p>
+          <h2 id="deletion">Deleting your shared account</h2>
+          <p>
+            The same Supabase identity is used by Roadtrippin and Muddlist. Roadtrippin currently
+            supports full shared-account deletion only. This action permanently deletes:
+          </p>
+          <ul>
+            <li>your shared authentication identity;</li>
+            <li>all synced Roadtrippin trips, sightings, journal content, achievements, and photos;</li>
+            <li>all Roadtrippin data retained on the device completing deletion; and</li>
+            <li>your Muddlist tasks and deleted-task records associated with the same identity.</li>
+          </ul>
+          <p>
+            This cannot be undone and may stop you from signing in to any Bent Nail Studio app that
+            uses that identity. To request deletion in Roadtrippin, open
+            <strong>Settings → Account → Delete shared account</strong>, read the warning, and enter
+            the required confirmation phrase while signed in.
+          </p>
+          <p>
+            If you cannot access the app, email
+            <a href="mailto:privacy@bentnail.studio?subject=Roadtrippin%20account%20deletion">
+              privacy@bentnail.studio</a
+            >
+            from the address associated with your account. We will verify account ownership before
+            processing a request.
+          </p>
+        </section>
+
+        <section aria-labelledby="children">
+          <h2 id="children">Children</h2>
+          <p>
+            Roadtrippin is a general-audience app and is not directed to children under 13. An adult
+            or person old enough to manage an online account and consent to location access should
+            manage optional cloud features. Please do not include another person’s sensitive
+            information in trip notes without permission.
+          </p>
+        </section>
+
+        <section aria-labelledby="security">
+          <h2 id="security">Security and international processing</h2>
+          <p>
+            Bent Nail Studio uses reasonable technical and organizational safeguards, but no device,
+            transmission, or storage system is completely secure. Service providers may process
+            information in countries other than your own, subject to their contractual safeguards
+            and applicable law.
+          </p>
+        </section>
+
+        <section aria-labelledby="changes">
+          <h2 id="changes">Changes to this policy</h2>
+          <p>
+            We may update this policy as Roadtrippin changes. We will post the revised effective date
+            here and provide additional notice in the app when a change materially affects your
+            choices.
+          </p>
+        </section>
+
+        <section aria-labelledby="contact">
+          <h2 id="contact">Contact</h2>
+          <p>
+            Bent Nail Studio<br />
+            <a href="mailto:privacy@bentnail.studio">privacy@bentnail.studio</a>
+          </p>
+        </section>
+      </article>
+    </main>
+
+    <footer>
+      <p>© 2026 Bent Nail Studio</p>
+    </footer>
+  </body>
+</html>

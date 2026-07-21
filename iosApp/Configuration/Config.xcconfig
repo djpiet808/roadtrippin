@@ -1,0 +1,8 @@
+TEAM_ID=
+BUNDLE_ID=com.roadtrippin.app
+APP_NAME=Roadtrippin
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SENTRY_DSN=
+
+#include? "Local.xcconfig"
