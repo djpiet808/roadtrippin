@@ -104,6 +104,7 @@ import com.roadtrippin.shared.domain.JournalEntryKind
 import com.roadtrippin.shared.domain.JournalPhoto
 import com.roadtrippin.shared.domain.Jurisdiction
 import com.roadtrippin.shared.domain.JurisdictionCatalog
+import com.roadtrippin.shared.domain.PlateSighting
 import com.roadtrippin.shared.domain.Region
 import com.roadtrippin.shared.domain.SyncState
 import com.roadtrippin.shared.domain.TagQuantity
@@ -1225,6 +1226,7 @@ private fun CombinedTripMap(
 ) {
     val seen = trip.sightings.map { it.jurisdictionCode }.toSet()
     val locatedEntries = trip.journal.filter { it.location.hasCoordinates }
+    val locatedSightings = trip.sightings.filter { it.location.hasCoordinates }
     val selectedEntry = trip.journal.firstOrNull { it.id == selectedEntryId }
     val selectedJurisdiction = selectedStateCode?.let(JurisdictionCatalog.byCode::get)
     val selectedSighting = selectedStateCode?.let { code -> trip.sightings.firstOrNull { it.jurisdictionCode == code } }
@@ -1243,6 +1245,10 @@ private fun CombinedTripMap(
     }
     val textMeasurer = rememberTextMeasurer(cacheSize = 256)
     val pinRadiusPx = with(LocalDensity.current) { 8.dp.toPx() }
+    val plateMarkerWidthPx = with(LocalDensity.current) { 24.dp.toPx() }
+    val plateMarkerHeightPx = with(LocalDensity.current) { 16.dp.toPx() }
+    val plateMarkerStemPx = with(LocalDensity.current) { 4.dp.toPx() }
+    val plateMarkerHitRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
     val dcRadiusPx = with(LocalDensity.current) { 6.dp.toPx() }
     val stateBoundaryWidthPx = with(LocalDensity.current) { 1.5.dp.toPx() }
     val selectedStateBoundaryWidthPx = with(LocalDensity.current) { 3.dp.toPx() }
@@ -1262,6 +1268,11 @@ private fun CombinedTripMap(
         fontWeight = FontWeight.Bold,
         fontSize = 9.sp,
     )
+    val plateMarkerTextStyle = MaterialTheme.typography.labelSmall.copy(
+        color = Color.White,
+        fontWeight = FontWeight.Black,
+        fontSize = 8.sp,
+    )
 
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
@@ -1277,7 +1288,7 @@ private fun CombinedTripMap(
                 .background(ocean)
                 .onSizeChanged { mapCanvasSize = it }
                 .semantics {
-                    contentDescription = "Combined offline trip map with ${seen.size} plates seen and ${locatedEntries.size} journal pins. Pinch to zoom, drag to pan, and tap a state or pin for details."
+                    contentDescription = "Combined offline trip map with ${seen.size} plates seen, ${locatedSightings.size} plate sighting marker${if (locatedSightings.size == 1) "" else "s"}, and ${locatedEntries.size} journal pin${if (locatedEntries.size == 1) "" else "s"}. Pinch to zoom, drag to pan, and tap a state or marker for details."
                 }
                 // Keep this detector alive for the entire touch sequence. Keying it to
                 // mapScale/mapOffset restarts it after every movement and cancels the drag.
@@ -1301,29 +1312,32 @@ private fun CombinedTripMap(
                         mapOffset = clampMapOffset(candidate, newScale, size.width.toFloat(), size.height.toFloat())
                     }
                 }
-                .pointerInput(data, overviewData, locatedEntries) {
+                .pointerInput(data, overviewData, locatedEntries, locatedSightings) {
                     detectTapGestures { tap ->
                         val mapTap = Offset(
                             (tap.x - mapOffset.x) / mapScale,
                             (tap.y - mapOffset.y) / mapScale,
                         )
-                        val journalHit = locatedEntries.minByOrNull { entry ->
-                            val point = projectNorthAmericaLocation(entry, size.width.toFloat(), size.height.toFloat())
-                            (point - mapTap).getDistance()
-                        }?.takeIf { entry ->
-                            val point = projectNorthAmericaLocation(entry, size.width.toFloat(), size.height.toFloat())
-                            (point - mapTap).getDistance() <= pinRadiusPx * 1.8f / mapScale
-                        }
-                        if (journalHit != null) {
-                            onEntrySelected(journalHit.id)
-                        } else {
-                            findStateAtPoint(
-                                data = if (mapScale >= 20f) data else overviewData,
-                                point = mapTap,
-                                width = size.width.toFloat(),
-                                height = size.height.toFloat(),
-                                dcHitRadius = dcRadiusPx / mapScale,
-                            )?.let(onStateSelected)
+                        val journalHit = locatedEntries.map { entry ->
+                            entry to (projectNorthAmericaLocation(entry, size.width.toFloat(), size.height.toFloat()) - mapTap).getDistance()
+                        }.minByOrNull { it.second }?.takeIf { it.second <= pinRadiusPx * 1.8f / mapScale }
+                        val sightingHit = locatedSightings.map { sighting ->
+                            sighting to (projectNorthAmericaLocation(sighting, size.width.toFloat(), size.height.toFloat()) - mapTap).getDistance()
+                        }.minByOrNull { it.second }?.takeIf { it.second <= plateMarkerHitRadiusPx / mapScale }
+                        when {
+                            sightingHit != null && (journalHit == null || sightingHit.second < journalHit.second) -> {
+                                onStateSelected(sightingHit.first.jurisdictionCode)
+                            }
+                            journalHit != null -> onEntrySelected(journalHit.first.id)
+                            else -> {
+                                findStateAtPoint(
+                                    data = if (mapScale >= 20f) data else overviewData,
+                                    point = mapTap,
+                                    width = size.width.toFloat(),
+                                    height = size.height.toFloat(),
+                                    dcHitRadius = dcRadiusPx / mapScale,
+                                )?.let(onStateSelected)
+                            }
                         }
                     }
                 }
@@ -1504,11 +1518,71 @@ private fun CombinedTripMap(
                     drawCircle(Color.White, pinRadiusPx / mapScale, point, style = Stroke(2.dp.toPx() / mapScale))
                 }
             }
+
+            locatedSightings.forEach { sighting ->
+                val locationPoint = projectNorthAmericaLocation(sighting, size.width, size.height)
+                val screenPoint = Offset(
+                    locationPoint.x * mapScale + mapOffset.x,
+                    locationPoint.y * mapScale + mapOffset.y,
+                )
+                val markerCenter = screenPoint - Offset(0f, plateMarkerHeightPx / 2f + plateMarkerStemPx)
+                val markerTopLeft = markerCenter - Offset(plateMarkerWidthPx / 2f, plateMarkerHeightPx / 2f)
+                val markerSize = Size(plateMarkerWidthPx, plateMarkerHeightPx)
+                val jurisdiction = JurisdictionCatalog.byCode.getValue(sighting.jurisdictionCode)
+                val markerColor = Color(jurisdiction.region.colorHex)
+                val selected = sighting.jurisdictionCode == selectedStateCode
+                drawLine(
+                    color = markerColor,
+                    start = Offset(screenPoint.x, markerTopLeft.y + plateMarkerHeightPx),
+                    end = screenPoint,
+                    strokeWidth = 3.dp.toPx(),
+                )
+                if (selected) {
+                    val selectionPadding = 3.dp.toPx()
+                    drawRoundRect(
+                        color = Color.White,
+                        topLeft = markerTopLeft - Offset(selectionPadding, selectionPadding),
+                        size = Size(
+                            markerSize.width + selectionPadding * 2,
+                            markerSize.height + selectionPadding * 2,
+                        ),
+                        cornerRadius = CornerRadius(5.dp.toPx()),
+                    )
+                    drawRoundRect(
+                        color = selectionColor,
+                        topLeft = markerTopLeft - Offset(selectionPadding, selectionPadding),
+                        size = Size(
+                            markerSize.width + selectionPadding * 2,
+                            markerSize.height + selectionPadding * 2,
+                        ),
+                        cornerRadius = CornerRadius(5.dp.toPx()),
+                        style = Stroke(2.dp.toPx()),
+                    )
+                }
+                drawRoundRect(
+                    color = markerColor,
+                    topLeft = markerTopLeft,
+                    size = markerSize,
+                    cornerRadius = CornerRadius(3.dp.toPx()),
+                )
+                drawRoundRect(
+                    color = Color.White,
+                    topLeft = markerTopLeft,
+                    size = markerSize,
+                    cornerRadius = CornerRadius(3.dp.toPx()),
+                    style = Stroke(1.25.dp.toPx()),
+                )
+                val codeLayout = textMeasurer.measure(sighting.jurisdictionCode, style = plateMarkerTextStyle)
+                drawText(
+                    textLayoutResult = codeLayout,
+                    topLeft = markerCenter - Offset(codeLayout.size.width / 2f, codeLayout.size.height / 2f),
+                )
+            }
         }
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "${(mapScale * 100).roundToInt()}% • ≈${approximateMapMilesAcross(mapScale, mapCenterLatitude(mapOffset, mapScale, mapCanvasSize.height))} mi • ${locatedEntries.size} pin${if (locatedEntries.size == 1) "" else "s"}",
+                "${(mapScale * 100).roundToInt()}% • ≈${approximateMapMilesAcross(mapScale, mapCenterLatitude(mapOffset, mapScale, mapCanvasSize.height))} mi",
                 Modifier.weight(1f),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1537,6 +1611,12 @@ private fun CombinedTripMap(
                 enabled = mapScale > 1f || mapOffset != Offset.Zero,
             ) { Text("Reset") }
         }
+        Text(
+            "State-code markers: ${locatedSightings.size} plate sighting${if (locatedSightings.size == 1) "" else "s"} • Round journal pins: ${locatedEntries.size}",
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         if (highways == null) {
             Text(
                 if (highwaysUnavailable) "Offline highway layer unavailable" else "Loading offline highways…",
@@ -1549,7 +1629,7 @@ private fun CombinedTripMap(
             selectedEntry != null -> JournalMapSelectionCard(selectedEntry) { onEntryOpen(selectedEntry.id) }
             selectedJurisdiction != null -> StateMapSelectionCard(selectedJurisdiction, selectedSighting)
             else -> Text(
-                "Tap a state for its name and plate status, or tap a journal pin to open the note.",
+                "Tap a state or state-code marker for plate details, or tap a round pin to open the journal note.",
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1573,10 +1653,19 @@ private fun CombinedTripMap(
                 }
             }
         }
-        val missingLocations = trip.journal.size - locatedEntries.size
-        if (missingLocations > 0) {
+        val missingJournalLocations = trip.journal.size - locatedEntries.size
+        val missingSightingLocations = trip.sightings.size - locatedSightings.size
+        if (missingJournalLocations > 0) {
             Text(
-                "$missingLocations journal entr${if (missingLocations == 1) "y has" else "ies have"} no map location.",
+                "$missingJournalLocations journal entr${if (missingJournalLocations == 1) "y has" else "ies have"} no map location.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 5.dp),
+            )
+        }
+        if (missingSightingLocations > 0) {
+            Text(
+                "$missingSightingLocations plate sighting${if (missingSightingLocations == 1) " has" else "s have"} no map location.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 5.dp),
@@ -1588,7 +1677,7 @@ private fun CombinedTripMap(
 @Composable
 private fun StateMapSelectionCard(
     jurisdiction: Jurisdiction,
-    sighting: com.roadtrippin.shared.domain.PlateSighting?,
+    sighting: PlateSighting?,
 ) {
     OutlinedCard(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1647,6 +1736,9 @@ private fun clampMapOffset(offset: Offset, scale: Float, width: Float, height: F
 
 private fun projectNorthAmericaLocation(entry: JournalEntry, width: Float, height: Float): Offset =
     projectNorthAmerica(entry.location.latitude!!, entry.location.longitude!!, width, height)
+
+private fun projectNorthAmericaLocation(sighting: PlateSighting, width: Float, height: Float): Offset =
+    projectNorthAmerica(sighting.location.latitude!!, sighting.location.longitude!!, width, height)
 
 private fun findStateAtPoint(
     data: StateVectorData,
