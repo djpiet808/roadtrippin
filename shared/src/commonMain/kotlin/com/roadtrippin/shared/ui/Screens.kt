@@ -1244,6 +1244,63 @@ private fun visibleMapRect(offset: Offset, scale: Float, width: Float, height: F
     bottom = (height - offset.y) / scale,
 )
 
+private fun buildTripMapMarkerPlacements(
+    entries: List<JournalEntry>,
+    sightings: List<PlateSighting>,
+    mapScale: Float,
+    mapOffset: Offset,
+    width: Float,
+    height: Float,
+    journalCollisionDiameterPx: Float,
+    plateCollisionSize: Size,
+    platePreferredOffsetPx: Float,
+    markerGapPx: Float,
+    markerRingStepPx: Float,
+): List<MapMarkerPlacement> {
+    if (width <= 0f || height <= 0f) return emptyList()
+    fun screenAnchor(mapPoint: Offset): Offset = Offset(
+        mapPoint.x * mapScale + mapOffset.x,
+        mapPoint.y * mapScale + mapOffset.y,
+    )
+
+    val markers = buildList {
+        entries.sortedWith(compareBy<JournalEntry> { it.occurredAt }.thenBy { it.id }).forEach { entry ->
+            val anchor = screenAnchor(projectNorthAmericaLocation(entry, width, height))
+            if (anchor.x in 0f..width && anchor.y in 0f..height) {
+                add(
+                    MapMarkerLayoutInput(
+                        id = entry.id,
+                        kind = MapMarkerKind.JOURNAL,
+                        anchor = anchor,
+                        preferredCenter = anchor,
+                        collisionSize = Size(journalCollisionDiameterPx, journalCollisionDiameterPx),
+                    )
+                )
+            }
+        }
+        sightings.sortedWith(compareBy<PlateSighting> { it.firstSeenAt }.thenBy { it.jurisdictionCode }).forEach { sighting ->
+            val anchor = screenAnchor(projectNorthAmericaLocation(sighting, width, height))
+            if (anchor.x in 0f..width && anchor.y in 0f..height) {
+                add(
+                    MapMarkerLayoutInput(
+                        id = sighting.id,
+                        kind = MapMarkerKind.PLATE,
+                        anchor = anchor,
+                        preferredCenter = anchor - Offset(0f, platePreferredOffsetPx),
+                        collisionSize = plateCollisionSize,
+                    )
+                )
+            }
+        }
+    }
+    return placeMapMarkers(
+        markers = markers,
+        canvasSize = Size(width, height),
+        gapPx = markerGapPx,
+        ringStepPx = markerRingStepPx,
+    )
+}
+
 @Composable
 private fun CombinedTripMap(
     data: StateVectorData,
@@ -1283,7 +1340,15 @@ private fun CombinedTripMap(
     val plateMarkerWidthPx = with(LocalDensity.current) { 24.dp.toPx() }
     val plateMarkerHeightPx = with(LocalDensity.current) { 16.dp.toPx() }
     val plateMarkerStemPx = with(LocalDensity.current) { 4.dp.toPx() }
-    val plateMarkerHitRadiusPx = with(LocalDensity.current) { 24.dp.toPx() }
+    val plateSelectionPaddingPx = with(LocalDensity.current) { 3.dp.toPx() }
+    val markerHitPaddingPx = with(LocalDensity.current) { 8.dp.toPx() }
+    val markerGapPx = with(LocalDensity.current) { 4.dp.toPx() }
+    val markerRingStepPx = with(LocalDensity.current) { 38.dp.toPx() }
+    val journalCollisionDiameterPx = pinRadiusPx * 3.1f
+    val plateCollisionSize = Size(
+        plateMarkerWidthPx + plateSelectionPaddingPx * 2f,
+        plateMarkerHeightPx + plateSelectionPaddingPx * 2f,
+    )
     val dcRadiusPx = with(LocalDensity.current) { 6.dp.toPx() }
     val stateBoundaryWidthPx = with(LocalDensity.current) { 1.5.dp.toPx() }
     val selectedStateBoundaryWidthPx = with(LocalDensity.current) { 3.dp.toPx() }
@@ -1292,8 +1357,9 @@ private fun CombinedTripMap(
     val selectionColor = MaterialTheme.colorScheme.primary
     val isDark = MaterialTheme.colorScheme.surface.luminance() < .5f
     val ocean = if (isDark) Color(0xFF18303C) else Color(0xFFDCEBF2)
-    val stateBoundary = if (isDark) Color(0xFFD8E2E7) else Color(0xFF405159)
+    val stateBoundary = if (isDark) Color(0xFF6F8792) else Color(0xFF43545C)
     val roadCasing = if (isDark) Color(0xFF172126) else Color(0xFFFFFCF4)
+    val markerLeaderCasing = if (isDark) Color(0xFF101A1F) else Color(0xFFFFFCF4)
     val interstateRoad = if (isDark) Color(0xFF83B4FF) else Color(0xFF2F67B1)
     val usRouteRoad = if (isDark) Color(0xFFFFB36A) else Color(0xFFC65F18)
     val stateRouteRoad = if (isDark) Color(0xFFC4CDD2) else Color(0xFF59666D)
@@ -1349,21 +1415,36 @@ private fun CombinedTripMap(
                 }
                 .pointerInput(data, overviewData, locatedEntries, locatedSightings) {
                     detectTapGestures { tap ->
+                        val markerPlacements = buildTripMapMarkerPlacements(
+                            entries = locatedEntries,
+                            sightings = locatedSightings,
+                            mapScale = mapScale,
+                            mapOffset = mapOffset,
+                            width = size.width.toFloat(),
+                            height = size.height.toFloat(),
+                            journalCollisionDiameterPx = journalCollisionDiameterPx,
+                            plateCollisionSize = plateCollisionSize,
+                            platePreferredOffsetPx = plateMarkerHeightPx / 2f + plateMarkerStemPx,
+                            markerGapPx = markerGapPx,
+                            markerRingStepPx = markerRingStepPx,
+                        )
+                        val markerHit = markerPlacements
+                            .filter { placement ->
+                                tap.x >= placement.bounds.left - markerHitPaddingPx &&
+                                    tap.x <= placement.bounds.right + markerHitPaddingPx &&
+                                    tap.y >= placement.bounds.top - markerHitPaddingPx &&
+                                    tap.y <= placement.bounds.bottom + markerHitPaddingPx
+                            }
+                            .minByOrNull { (it.center - tap).getDistance() }
                         val mapTap = Offset(
                             (tap.x - mapOffset.x) / mapScale,
                             (tap.y - mapOffset.y) / mapScale,
                         )
-                        val journalHit = locatedEntries.map { entry ->
-                            entry to (projectNorthAmericaLocation(entry, size.width.toFloat(), size.height.toFloat()) - mapTap).getDistance()
-                        }.minByOrNull { it.second }?.takeIf { it.second <= pinRadiusPx * 1.8f / mapScale }
-                        val sightingHit = locatedSightings.map { sighting ->
-                            sighting to (projectNorthAmericaLocation(sighting, size.width.toFloat(), size.height.toFloat()) - mapTap).getDistance()
-                        }.minByOrNull { it.second }?.takeIf { it.second <= plateMarkerHitRadiusPx / mapScale }
-                        when {
-                            sightingHit != null && (journalHit == null || sightingHit.second < journalHit.second) -> {
-                                onStateSelected(sightingHit.first.jurisdictionCode)
-                            }
-                            journalHit != null -> onEntrySelected(journalHit.first.id)
+                        when (markerHit?.marker?.kind) {
+                            MapMarkerKind.PLATE -> locatedSightings
+                                .firstOrNull { it.id == markerHit.marker.id }
+                                ?.let { onStateSelected(it.jurisdictionCode) }
+                            MapMarkerKind.JOURNAL -> onEntrySelected(markerHit.marker.id)
                             else -> {
                                 findStateAtPoint(
                                     data = if (mapScale >= 20f) data else overviewData,
@@ -1399,6 +1480,19 @@ private fun CombinedTripMap(
             } else {
                 emptyList()
             }
+            val markerPlacements = buildTripMapMarkerPlacements(
+                entries = locatedEntries,
+                sightings = locatedSightings,
+                mapScale = mapScale,
+                mapOffset = mapOffset,
+                width = size.width,
+                height = size.height,
+                journalCollisionDiameterPx = journalCollisionDiameterPx,
+                plateCollisionSize = plateCollisionSize,
+                platePreferredOffsetPx = plateMarkerHeightPx / 2f + plateMarkerStemPx,
+                markerGapPx = markerGapPx,
+                markerRingStepPx = markerRingStepPx,
+            )
             if (!mapGestureActive) highwayRenderTiles.forEach { renderTile ->
                 renderTile.labels.forEach { roadLabel ->
                     val candidatesForClass = labelCandidates[roadLabel.highwayClass.ordinal]
@@ -1447,6 +1541,15 @@ private fun CombinedTripMap(
                     val fill = if (statePath.code in seen) Color(jurisdiction.region.colorHex) else unseenFill
                     drawPath(statePath.path, fill)
                 }
+                visibleStatePaths.forEach { statePath ->
+                    if (statePath.code != selectedStateCode) {
+                        drawPath(
+                            statePath.path,
+                            stateBoundary,
+                            style = Stroke(stateBoundaryWidthPx / mapScale),
+                        )
+                    }
+                }
 
                 val roadColors = arrayOf(interstateRoad, usRouteRoad, stateRouteRoad)
                 val roadWidths = floatArrayOf(2.5f, 2.05f, 1.55f)
@@ -1469,14 +1572,11 @@ private fun CombinedTripMap(
                     }
                 }
 
-                visibleStatePaths.forEach { statePath ->
-                    val selected = statePath.code == selectedStateCode
+                visibleStatePaths.firstOrNull { it.code == selectedStateCode }?.let { statePath ->
                     drawPath(
                         statePath.path,
-                        if (selected) selectionColor else stateBoundary,
-                        style = Stroke(
-                            (if (selected) selectedStateBoundaryWidthPx else stateBoundaryWidthPx) / mapScale,
-                        ),
+                        selectionColor,
+                        style = Stroke(selectedStateBoundaryWidthPx / mapScale),
                     )
                 }
 
@@ -1532,63 +1632,70 @@ private fun CombinedTripMap(
                 }
             }
 
-            withTransform({
-                translate(mapOffset.x, mapOffset.y)
-                scale(mapScale, mapScale, Offset.Zero)
-            }) {
-                locatedEntries.forEach { entry ->
-                    val point = projectNorthAmericaLocation(entry, size.width, size.height)
-                    val fill = if (entry.kind == JournalEntryKind.STOP) RoadOrange else Color(0xFF6E56CF)
-                    if (entry.id == selectedEntryId) {
-                        drawCircle(Color.White, pinRadiusPx * 1.55f / mapScale, point)
-                        drawCircle(selectionColor, pinRadiusPx * 1.55f / mapScale, point, style = Stroke(2.dp.toPx() / mapScale))
-                    }
+            markerPlacements.forEach { placement ->
+                val markerColor = when (placement.marker.kind) {
+                    MapMarkerKind.JOURNAL -> locatedEntries
+                        .firstOrNull { it.id == placement.marker.id }
+                        ?.let { if (it.kind == JournalEntryKind.STOP) RoadOrange else Color(0xFF6E56CF) }
+                    MapMarkerKind.PLATE -> locatedSightings
+                        .firstOrNull { it.id == placement.marker.id }
+                        ?.let { Color(JurisdictionCatalog.byCode.getValue(it.jurisdictionCode).region.colorHex) }
+                } ?: return@forEach
+                if (placement.marker.kind == MapMarkerKind.PLATE || placement.isDisplaced) {
                     drawLine(
-                        fill,
-                        point,
-                        point + Offset(0f, pinRadiusPx * 1.55f / mapScale),
-                        strokeWidth = 4.dp.toPx() / mapScale,
+                        color = markerLeaderCasing,
+                        start = placement.center,
+                        end = placement.marker.anchor,
+                        strokeWidth = 3.5.dp.toPx(),
                     )
-                    drawCircle(fill, pinRadiusPx / mapScale, point)
-                    drawCircle(Color.White, pinRadiusPx / mapScale, point, style = Stroke(2.dp.toPx() / mapScale))
+                    drawLine(
+                        color = markerColor,
+                        start = placement.center,
+                        end = placement.marker.anchor,
+                        strokeWidth = 1.75.dp.toPx(),
+                    )
+                }
+                if (placement.isDisplaced) {
+                    drawCircle(markerLeaderCasing, 2.5.dp.toPx(), placement.marker.anchor)
+                    drawCircle(markerColor, 1.25.dp.toPx(), placement.marker.anchor)
                 }
             }
 
-            locatedSightings.forEach { sighting ->
-                val locationPoint = projectNorthAmericaLocation(sighting, size.width, size.height)
-                val screenPoint = Offset(
-                    locationPoint.x * mapScale + mapOffset.x,
-                    locationPoint.y * mapScale + mapOffset.y,
-                )
-                val markerCenter = screenPoint - Offset(0f, plateMarkerHeightPx / 2f + plateMarkerStemPx)
+            markerPlacements.filter { it.marker.kind == MapMarkerKind.JOURNAL }.forEach { placement ->
+                val entry = locatedEntries.firstOrNull { it.id == placement.marker.id } ?: return@forEach
+                val fill = if (entry.kind == JournalEntryKind.STOP) RoadOrange else Color(0xFF6E56CF)
+                if (entry.id == selectedEntryId) {
+                    drawCircle(Color.White, pinRadiusPx * 1.55f, placement.center)
+                    drawCircle(selectionColor, pinRadiusPx * 1.55f, placement.center, style = Stroke(2.dp.toPx()))
+                }
+                drawCircle(fill, pinRadiusPx, placement.center)
+                drawCircle(Color.White, pinRadiusPx, placement.center, style = Stroke(2.dp.toPx()))
+            }
+
+            markerPlacements.filter { it.marker.kind == MapMarkerKind.PLATE }.forEach { placement ->
+                val sighting = locatedSightings.firstOrNull { it.id == placement.marker.id } ?: return@forEach
+                val markerCenter = placement.center
                 val markerTopLeft = markerCenter - Offset(plateMarkerWidthPx / 2f, plateMarkerHeightPx / 2f)
                 val markerSize = Size(plateMarkerWidthPx, plateMarkerHeightPx)
                 val jurisdiction = JurisdictionCatalog.byCode.getValue(sighting.jurisdictionCode)
                 val markerColor = Color(jurisdiction.region.colorHex)
                 val selected = sighting.jurisdictionCode == selectedStateCode
-                drawLine(
-                    color = markerColor,
-                    start = Offset(screenPoint.x, markerTopLeft.y + plateMarkerHeightPx),
-                    end = screenPoint,
-                    strokeWidth = 3.dp.toPx(),
-                )
                 if (selected) {
-                    val selectionPadding = 3.dp.toPx()
                     drawRoundRect(
                         color = Color.White,
-                        topLeft = markerTopLeft - Offset(selectionPadding, selectionPadding),
+                        topLeft = markerTopLeft - Offset(plateSelectionPaddingPx, plateSelectionPaddingPx),
                         size = Size(
-                            markerSize.width + selectionPadding * 2,
-                            markerSize.height + selectionPadding * 2,
+                            markerSize.width + plateSelectionPaddingPx * 2,
+                            markerSize.height + plateSelectionPaddingPx * 2,
                         ),
                         cornerRadius = CornerRadius(5.dp.toPx()),
                     )
                     drawRoundRect(
                         color = selectionColor,
-                        topLeft = markerTopLeft - Offset(selectionPadding, selectionPadding),
+                        topLeft = markerTopLeft - Offset(plateSelectionPaddingPx, plateSelectionPaddingPx),
                         size = Size(
-                            markerSize.width + selectionPadding * 2,
-                            markerSize.height + selectionPadding * 2,
+                            markerSize.width + plateSelectionPaddingPx * 2,
+                            markerSize.height + plateSelectionPaddingPx * 2,
                         ),
                         cornerRadius = CornerRadius(5.dp.toPx()),
                         style = Stroke(2.dp.toPx()),
@@ -1648,6 +1755,12 @@ private fun CombinedTripMap(
         }
         Text(
             "State-code markers: ${locatedSightings.size} plate sighting${if (locatedSightings.size == 1) "" else "s"} • Round journal pins: ${locatedEntries.size}",
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            "Crowded markers spread apart; leader lines point to their exact locations.",
             modifier = Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
