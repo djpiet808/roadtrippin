@@ -2015,7 +2015,7 @@ fun SettingsScreen(store: RoadtrippinStore, padding: PaddingValues) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         AppHeader("Settings", "Roadtrippin preferences", onBack = { store.screen = if (store.activeTrip != null) AppScreen.DASHBOARD else AppScreen.HOME })
-        SettingSwitch("Sound", "Play a celebration sound for a new plate", store.settings.soundEnabled) {
+        SettingSwitch("Sound", "Say \u201cHazzah!\u201d for a new plate", store.settings.soundEnabled) {
             store.updateSettings { settings -> settings.copy(soundEnabled = it) }
         }
         SettingSwitch("Haptics", "Use a short vibration for a new plate", store.settings.hapticsEnabled) {

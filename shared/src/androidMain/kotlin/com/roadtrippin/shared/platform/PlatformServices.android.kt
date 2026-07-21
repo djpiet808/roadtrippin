@@ -11,13 +11,12 @@ import android.location.Geocoder
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
-import android.media.AudioManager
-import android.media.ToneGenerator
 import android.os.Build
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.speech.tts.TextToSpeech
 import android.net.Uri
 import android.net.ConnectivityManager
 import android.net.Network
@@ -59,10 +58,28 @@ actual object PlatformServices {
     private var photoResult: CompletableDeferred<List<JournalPhoto>>? = null
     private var cameraInput: File? = null
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val toneGenerator by lazy { ToneGenerator(AudioManager.STREAM_NOTIFICATION, 70) }
+    private var speech: TextToSpeech? = null
+    private var speechReady = false
+    private var pendingCheer = false
 
     fun initialize(activity: ComponentActivity) {
-        context = activity.applicationContext
+        val appContext = activity.applicationContext
+        context = appContext
+        if (speech == null) {
+            speech = TextToSpeech(appContext) { status ->
+                speechReady = status == TextToSpeech.SUCCESS
+                if (speechReady) {
+                    speech?.language = Locale.US
+                    speech?.setSpeechRate(0.95f)
+                    if (pendingCheer) {
+                        pendingCheer = false
+                        speakNewPlateCheer()
+                    }
+                } else {
+                    pendingCheer = false
+                }
+            }
+        }
         permissionLauncher = activity.registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions(),
         ) { result ->
@@ -200,8 +217,22 @@ actual object PlatformServices {
             }
         }
         if (sound) {
-            runCatching { toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP2, 100) }
+            runCatching(::speakNewPlateCheer)
         }
+    }
+
+    private fun speakNewPlateCheer() {
+        val synthesizer = speech
+        if (!speechReady || synthesizer == null) {
+            pendingCheer = true
+            return
+        }
+        synthesizer.speak(
+            NEW_PLATE_CHEER,
+            TextToSpeech.QUEUE_FLUSH,
+            null,
+            "roadtrippin-new-plate",
+        )
     }
 
     actual fun shareText(title: String, text: String) {

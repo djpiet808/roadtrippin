@@ -22,8 +22,8 @@ android {
         applicationId = "com.roadtrippin.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.1.0-beta09"
+        versionCode = 10
+        versionName = "0.1.0-beta10"
         manifestPlaceholders["SUPABASE_URL"] = roadtrippinSecret("SUPABASE_URL")
         manifestPlaceholders["SUPABASE_PUBLISHABLE_KEY"] = roadtrippinSecret("SUPABASE_PUBLISHABLE_KEY")
         manifestPlaceholders["SENTRY_DSN"] = roadtrippinSecret("SENTRY_DSN")

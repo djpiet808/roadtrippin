@@ -4,6 +4,8 @@ import com.roadtrippin.shared.domain.LocationStamp
 import com.roadtrippin.shared.domain.JournalPhoto
 import kotlinx.coroutines.flow.Flow
 
+internal const val NEW_PLATE_CHEER = "Hazzah!"
+
 expect object PlatformServices {
     fun nowEpochMillis(): Long
     fun randomId(): String

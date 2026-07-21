@@ -13,7 +13,8 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import platform.CoreGraphics.CGRectMake
-import platform.AudioToolbox.AudioServicesPlaySystemSound
+import platform.AVFAudio.AVSpeechSynthesizer
+import platform.AVFAudio.AVSpeechUtterance
 import platform.CoreLocation.CLAuthorizationStatus
 import platform.CoreLocation.CLGeocoder
 import platform.CoreLocation.CLLocation
@@ -85,6 +86,7 @@ actual object PlatformServices {
     private var activeLocationRequest: IosLocationRequest? = null
     private var activePhotoRequest: IosPhotoRequest? = null
     private var activeAppleRequest: IosAppleSignInRequest? = null
+    private val speechSynthesizer = AVSpeechSynthesizer()
 
     actual fun nowEpochMillis(): Long =
         ((NSDate().timeIntervalSinceReferenceDate + EPOCH_TO_REFERENCE_SECONDS) * 1_000.0).toLong()
@@ -203,7 +205,9 @@ actual object PlatformServices {
             if (haptics) {
                 UIImpactFeedbackGenerator(UIImpactFeedbackStyle.UIImpactFeedbackStyleMedium).impactOccurred()
             }
-            if (sound) AudioServicesPlaySystemSound(1104u)
+            if (sound) {
+                speechSynthesizer.speakUtterance(AVSpeechUtterance(string = NEW_PLATE_CHEER))
+            }
         }
     }
 
