@@ -33,7 +33,7 @@ fun RoadtrippinApp(store: RoadtrippinStore = remember { RoadtrippinStore() }) {
                     AppScreen.DASHBOARD -> DashboardScreen(store, snackbarHostState, padding)
                     AppScreen.PLATES -> PlatesScreen(store, snackbarHostState, padding)
                     AppScreen.JOURNAL -> JournalScreen(store, snackbarHostState, padding)
-                    AppScreen.MAP -> MapScreen(store, padding)
+                    AppScreen.MAP -> MapScreen(store, snackbarHostState, padding)
                     AppScreen.AWARDS -> AwardsScreen(store, padding)
                     AppScreen.TRIP_INFO -> TripInfoScreen(store, padding)
                     AppScreen.SETTINGS -> SettingsScreen(store, padding)

@@ -29,4 +29,30 @@ class JurisdictionCatalogTest {
         assertEquals(51, regionalUs)
         assertEquals(50, JurisdictionCatalog.usStates.size)
     }
+
+    @Test
+    fun fiveRegionMapMatchesTheRoadtrippinReference() {
+        fun codes(region: Region) = JurisdictionCatalog.all
+            .filter { it.region == region }
+            .mapTo(sortedSetOf()) { it.code }
+
+        assertEquals(
+            sortedSetOf("AK", "AZ", "CA", "CO", "HI", "ID", "MT", "NV", "NM", "OR", "UT", "WA", "WY"),
+            codes(Region.WEST),
+        )
+        assertEquals(
+            sortedSetOf("IA", "IL", "IN", "KS", "MI", "MN", "MO", "ND", "NE", "OH", "SD", "WI"),
+            codes(Region.MIDWEST),
+        )
+        assertEquals(
+            sortedSetOf("CT", "DC", "DE", "MA", "MD", "ME", "NH", "NJ", "NY", "PA", "RI", "VT"),
+            codes(Region.NORTHEAST),
+        )
+        assertEquals(
+            sortedSetOf("AR", "FL", "KY", "NC", "OK", "TN", "TX", "VA", "WV"),
+            codes(Region.SOUTH),
+        )
+        assertEquals(sortedSetOf("AL", "GA", "LA", "MS", "SC"), codes(Region.DEEP_SOUTH))
+        assertEquals(sortedSetOf("BC", "MX"), codes(Region.NON_US))
+    }
 }

@@ -69,7 +69,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -79,6 +81,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.roadtrippin.shared.data.AppScreen
@@ -434,7 +437,7 @@ private fun SightingEditorDialog(
 private fun JurisdictionRow(jurisdiction: Jurisdiction, seen: Boolean, timestamp: String?, onClick: () -> Unit) {
     val regionColor = Color(jurisdiction.region.colorHex)
     val background = if (seen) regionColor else MaterialTheme.colorScheme.surface
-    val foreground = if (seen && jurisdiction.region in setOf(Region.PACIFIC_NORTHWEST, Region.NEW_ENGLAND, Region.MID_ATLANTIC)) Color.White else MaterialTheme.colorScheme.onSurface
+    val foreground = if (seen && jurisdiction.region in setOf(Region.WEST, Region.NORTHEAST, Region.DEEP_SOUTH)) Color.White else MaterialTheme.colorScheme.onSurface
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -588,7 +591,16 @@ private fun JournalEditorDialog(
     var loadingPhoto by remember(initialEntry?.id) { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (kind == JournalEntryKind.STOP) "Log a stop" else "Add a road note") },
+        title = {
+            Text(
+                when {
+                    initialEntry != null && kind == JournalEntryKind.STOP -> "Edit stop"
+                    initialEntry != null -> "Edit road note"
+                    kind == JournalEntryKind.STOP -> "Log a stop"
+                    else -> "Add a road note"
+                }
+            )
+        },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -699,29 +711,93 @@ private fun JournalEditorDialog(
 }
 
 @Composable
-fun MapScreen(store: RoadtrippinStore, padding: PaddingValues) {
+fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: PaddingValues) {
     val trip = store.activeTrip ?: return
+    val scope = rememberCoroutineScope()
+    val seen = trip.sightings.mapTo(mutableSetOf()) { it.jurisdictionCode }
+    var vectorData by remember { mutableStateOf<StateVectorData?>(null) }
+    var loadFailed by remember { mutableStateOf(false) }
+    var selectedStateCode by remember { mutableStateOf<String?>(null) }
+    var selectedEntryId by remember { mutableStateOf<String?>(null) }
+    var editingEntryId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            vectorJson.decodeFromString<StateVectorData>(
+                Res.readBytes("files/us_states_20m.json").decodeToString()
+            )
+        }.onSuccess { vectorData = it }.onFailure { loadFailed = true }
+    }
+
     Column(Modifier.fillMaxSize().padding(padding)) {
         AppHeader(
             "Trip map",
-            if (store.mapShowsJournal) "Clickable journal and stop pins" else "Seen states use their region color",
+            "Seen plates and trip memories together",
             onBack = { store.screen = AppScreen.DASHBOARD },
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 10.dp),
         )
-        Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ModeButton("Plate progress", !store.mapShowsJournal) { store.mapShowsJournal = false }
-            ModeButton("Trip journal", store.mapShowsJournal) { store.mapShowsJournal = true }
+        when {
+            vectorData != null -> {
+                CombinedTripMap(
+                    data = vectorData!!,
+                    trip = trip,
+                    selectedStateCode = selectedStateCode,
+                    selectedEntryId = selectedEntryId,
+                    onStateSelected = { code ->
+                        selectedStateCode = code
+                        selectedEntryId = null
+                    },
+                    onEntrySelected = { entryId ->
+                        selectedEntryId = entryId
+                        selectedStateCode = null
+                    },
+                    onEntryOpen = { editingEntryId = it },
+                    onShare = {
+                        PlatformServices.shareMapImage(
+                            title = "${trip.displayName} map",
+                            svg = buildShareMapSvg(vectorData!!, trip),
+                            summary = "${trip.displayName}: ${seen.size} of 53 Roadtrippin plates spotted and ${trip.journal.size} journal entries. Precise locations are not included.",
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
+                )
+            }
+            loadFailed -> EmptyCard(
+                "Map unavailable",
+                "The bundled state vectors could not be loaded.",
+                "🗺️",
+            )
+            else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         }
-        Spacer(Modifier.height(14.dp))
-        if (store.mapShowsJournal) JournalPinMap(trip, Modifier.fillMaxSize().padding(20.dp))
-        else PlateTileMap(trip, Modifier.fillMaxSize().padding(horizontal = 12.dp))
     }
-}
 
-@Composable
-private fun ModeButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    if (selected) Button(onClick = onClick) { Text(label) }
-    else OutlinedButton(onClick = onClick) { Text(label) }
+    val editingEntry = editingEntryId?.let { id ->
+        store.activeTrip?.journal?.firstOrNull { it.id == id }
+    }
+    if (editingEntry != null) {
+        JournalEditorDialog(
+            initialEntry = editingEntry,
+            onDismiss = { editingEntryId = null },
+            onSave = { kind, title, body, tags, occurredAt, location, photos ->
+                scope.launch {
+                    store.updateJournalEntry(
+                        entryId = editingEntry.id,
+                        kind = kind,
+                        title = title,
+                        body = body,
+                        occurredAt = occurredAt,
+                        location = location,
+                        tags = tags,
+                        photos = photos,
+                    )
+                    snackbar.showSnackbar("Journal entry updated")
+                }
+                editingEntryId = null
+            },
+        )
+    }
 }
 
 @Serializable
@@ -745,105 +821,349 @@ private data class StatePolygon(
 private val vectorJson = Json { ignoreUnknownKeys = true }
 
 @Composable
-private fun PlateTileMap(trip: Trip, modifier: Modifier = Modifier) {
+private fun CombinedTripMap(
+    data: StateVectorData,
+    trip: Trip,
+    selectedStateCode: String?,
+    selectedEntryId: String?,
+    onStateSelected: (String) -> Unit,
+    onEntrySelected: (String) -> Unit,
+    onEntryOpen: (String) -> Unit,
+    onShare: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val seen = trip.sightings.map { it.jurisdictionCode }.toSet()
-    var vectorData by remember { mutableStateOf<StateVectorData?>(null) }
-    var loadFailed by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        runCatching {
-            vectorJson.decodeFromString<StateVectorData>(
-                Res.readBytes("files/us_states_20m.json").decodeToString()
-            )
-        }.onSuccess { vectorData = it }.onFailure { loadFailed = true }
-    }
-    Column(modifier.verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("United States", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
-        Spacer(Modifier.height(10.dp))
-        when {
-            vectorData != null -> StateVectorMap(
-                data = vectorData!!,
-                seen = seen,
-                modifier = Modifier.fillMaxWidth().aspectRatio(1.28f),
-            )
-            loadFailed -> EmptyCard("Map unavailable", "The bundled state vectors could not be loaded.", "🗺️")
-            else -> Box(
-                Modifier.fillMaxWidth().aspectRatio(1.28f),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator() }
-        }
+    val locatedEntries = trip.journal.filter { it.location.hasCoordinates }
+    val selectedEntry = trip.journal.firstOrNull { it.id == selectedEntryId }
+    val selectedJurisdiction = selectedStateCode?.let(JurisdictionCatalog.byCode::get)
+    val selectedSighting = selectedStateCode?.let { code -> trip.sightings.firstOrNull { it.jurisdictionCode == code } }
+    var mapScale by remember { mutableStateOf(1f) }
+    var mapOffset by remember { mutableStateOf(Offset.Zero) }
+    var mapCanvasSize by remember { mutableStateOf(IntSize.Zero) }
+    val pinRadiusPx = with(LocalDensity.current) { 8.dp.toPx() }
+    val dcRadiusPx = with(LocalDensity.current) { 6.dp.toPx() }
+    val unseenFill = MaterialTheme.colorScheme.surfaceVariant
+    val outline = MaterialTheme.colorScheme.outline.copy(alpha = .72f)
+    val selectionColor = MaterialTheme.colorScheme.primary
+    val ocean = if (MaterialTheme.colorScheme.surface.luminance() < .5f) Color(0xFF18303C) else Color(0xFFDCEBF2)
+
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            "Offline U.S. Census 2025 cartographic boundaries • Alaska and Hawaii use insets • D.C. uses a callout",
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.labelSmall,
+            "Pinch to zoom • drag to pan • tap a state or pin",
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 18.dp),
         )
-        vectorData?.let { data ->
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = {
-                    PlatformServices.shareMapImage(
-                        title = "${trip.displayName} map",
-                        svg = buildShareMapSvg(data, trip),
-                        summary = "${trip.displayName}: ${seen.size} of 53 Roadtrippin plates spotted. Precise locations are not included.",
+        Spacer(Modifier.height(8.dp))
+        Canvas(
+            Modifier.fillMaxWidth()
+                .aspectRatio(1.42f)
+                .clip(RoundedCornerShape(18.dp))
+                .background(ocean)
+                .onSizeChanged { mapCanvasSize = it }
+                .semantics {
+                    contentDescription = "Combined offline trip map with ${seen.size} plates seen and ${locatedEntries.size} journal pins. Pinch to zoom, drag to pan, and tap a state or pin for details."
+                }
+                .pointerInput(data, trip.journal, mapScale, mapOffset) {
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        val newScale = (mapScale * zoom).coerceIn(1f, 6f)
+                        val ratio = newScale / mapScale
+                        val candidate = centroid + (mapOffset - centroid) * ratio + pan
+                        mapScale = newScale
+                        mapOffset = clampMapOffset(candidate, newScale, size.width.toFloat(), size.height.toFloat())
+                    }
+                }
+                .pointerInput(data, trip.journal, mapScale, mapOffset) {
+                    detectTapGestures { tap ->
+                        val mapTap = Offset(
+                            (tap.x - mapOffset.x) / mapScale,
+                            (tap.y - mapOffset.y) / mapScale,
+                        )
+                        val journalHit = locatedEntries.minByOrNull { entry ->
+                            val point = projectNorthAmericaLocation(entry, size.width.toFloat(), size.height.toFloat())
+                            (point - mapTap).getDistance()
+                        }?.takeIf { entry ->
+                            val point = projectNorthAmericaLocation(entry, size.width.toFloat(), size.height.toFloat())
+                            (point - mapTap).getDistance() <= pinRadiusPx * 1.8f / mapScale
+                        }
+                        if (journalHit != null) {
+                            onEntrySelected(journalHit.id)
+                        } else {
+                            findStateAtPoint(
+                                data = data,
+                                point = mapTap,
+                                width = size.width.toFloat(),
+                                height = size.height.toFloat(),
+                                dcHitRadius = dcRadiusPx / mapScale,
+                            )?.let(onStateSelected)
+                        }
+                    }
+                }
+        ) {
+            val borderWidth = (size.minDimension / 540f).coerceAtLeast(.8f)
+            withTransform({
+                translate(mapOffset.x, mapOffset.y)
+                scale(mapScale, mapScale, Offset.Zero)
+            }) {
+                listOf(-150.0, -120.0, -90.0, -60.0).forEach { longitude ->
+                    val top = projectNorthAmerica(75.0, longitude, size.width, size.height)
+                    val bottom = projectNorthAmerica(10.0, longitude, size.width, size.height)
+                    drawLine(outline.copy(alpha = .18f), top, bottom, borderWidth / mapScale)
+                }
+                listOf(20.0, 40.0, 60.0).forEach { latitude ->
+                    val left = projectNorthAmerica(latitude, -170.0, size.width, size.height)
+                    val right = projectNorthAmerica(latitude, -50.0, size.width, size.height)
+                    drawLine(outline.copy(alpha = .18f), left, right, borderWidth / mapScale)
+                }
+                data.states.forEach { state ->
+                    val jurisdiction = JurisdictionCatalog.byCode.getValue(state.code)
+                    val fill = if (state.code in seen) Color(jurisdiction.region.colorHex) else unseenFill
+                    state.polygons.forEach { polygon ->
+                        val path = Path().apply { fillType = PathFillType.EvenOdd }
+                        addNorthAmericaStateRing(path, state.code, polygon.outer, size.width, size.height)
+                        polygon.holes.forEach { hole ->
+                            addNorthAmericaStateRing(path, state.code, hole, size.width, size.height)
+                        }
+                        drawPath(path, fill)
+                        drawPath(
+                            path,
+                            if (state.code == selectedStateCode) selectionColor else outline,
+                            style = Stroke((if (state.code == selectedStateCode) borderWidth * 3f else borderWidth) / mapScale),
+                        )
+                    }
+                }
+
+                val dc = projectNorthAmerica(38.9072, -77.0369, size.width, size.height)
+                val dcFill = if ("DC" in seen) Color(JurisdictionCatalog.byCode.getValue("DC").region.colorHex) else unseenFill
+                drawCircle(dcFill, dcRadiusPx / mapScale, dc)
+                drawCircle(
+                    if (selectedStateCode == "DC") selectionColor else outline,
+                    dcRadiusPx / mapScale,
+                    dc,
+                    style = Stroke((if (selectedStateCode == "DC") 3.dp.toPx() else 1.5.dp.toPx()) / mapScale),
+                )
+
+                locatedEntries.forEach { entry ->
+                    val point = projectNorthAmericaLocation(entry, size.width, size.height)
+                    val fill = if (entry.kind == JournalEntryKind.STOP) RoadOrange else Color(0xFF6E56CF)
+                    if (entry.id == selectedEntryId) {
+                        drawCircle(Color.White, pinRadiusPx * 1.55f / mapScale, point)
+                        drawCircle(selectionColor, pinRadiusPx * 1.55f / mapScale, point, style = Stroke(2.dp.toPx() / mapScale))
+                    }
+                    drawLine(
+                        fill,
+                        point,
+                        point + Offset(0f, pinRadiusPx * 1.55f / mapScale),
+                        strokeWidth = 4.dp.toPx() / mapScale,
                     )
-                },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
-            ) { Text("Share map image") }
-        }
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CountryBadge("British Columbia", "BC" in seen, "🍁")
-            CountryBadge("Mexico", "MX" in seen, "🌵")
-        }
-        Spacer(Modifier.height(18.dp))
-        Text("Region legend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Region.entries.filterNot { it == Region.NON_US }.forEach { region ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(14.dp).clip(CircleShape).background(Color(region.colorHex)))
-                Spacer(Modifier.width(8.dp))
-                Text(region.displayName)
+                    drawCircle(fill, pinRadiusPx / mapScale, point)
+                    drawCircle(Color.White, pinRadiusPx / mapScale, point, style = Stroke(2.dp.toPx() / mapScale))
+                }
             }
+        }
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "${(mapScale * 100).roundToInt()}% • ${locatedEntries.size} map pin${if (locatedEntries.size == 1) "" else "s"}",
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(
+                onClick = {
+                    val newScale = (mapScale - .75f).coerceAtLeast(1f)
+                    val center = Offset(mapCanvasSize.width / 2f, mapCanvasSize.height / 2f)
+                    val candidate = center + (mapOffset - center) * (newScale / mapScale)
+                    mapScale = newScale
+                    mapOffset = clampMapOffset(candidate, newScale, mapCanvasSize.width.toFloat(), mapCanvasSize.height.toFloat())
+                },
+                enabled = mapScale > 1f,
+            ) { Text("−", fontSize = 22.sp) }
+            TextButton(onClick = {
+                val newScale = (mapScale + .75f).coerceAtMost(6f)
+                val center = Offset(mapCanvasSize.width / 2f, mapCanvasSize.height / 2f)
+                val candidate = center + (mapOffset - center) * (newScale / mapScale)
+                mapScale = newScale
+                mapOffset = clampMapOffset(candidate, newScale, mapCanvasSize.width.toFloat(), mapCanvasSize.height.toFloat())
+            }) {
+                Text("+", fontSize = 22.sp)
+            }
+            TextButton(
+                onClick = { mapScale = 1f; mapOffset = Offset.Zero },
+                enabled = mapScale > 1f || mapOffset != Offset.Zero,
+            ) { Text("Reset") }
+        }
+
+        when {
+            selectedEntry != null -> JournalMapSelectionCard(selectedEntry) { onEntryOpen(selectedEntry.id) }
+            selectedJurisdiction != null -> StateMapSelectionCard(selectedJurisdiction, selectedSighting)
+            else -> Text(
+                "Tap a state for its name and plate status, or tap a journal pin to open the note.",
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = onShare, modifier = Modifier.weight(1f)) { Text("Share plate map") }
+            Text("🍁 ${if ("BC" in seen) "✓" else "—"}", fontWeight = FontWeight.Bold)
+            Text("🌵 ${if ("MX" in seen) "✓" else "—"}", fontWeight = FontWeight.Bold)
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Region.entries.filterNot { it == Region.NON_US }.forEach { region ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(12.dp).clip(CircleShape).background(Color(region.colorHex)))
+                    Text(region.displayName, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        val missingLocations = trip.journal.size - locatedEntries.size
+        if (missingLocations > 0) {
+            Text(
+                "$missingLocations journal entr${if (missingLocations == 1) "y has" else "ies have"} no map location.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 5.dp),
+            )
         }
     }
 }
 
 @Composable
-private fun StateVectorMap(
-    data: StateVectorData,
-    seen: Set<String>,
-    modifier: Modifier = Modifier,
+private fun StateMapSelectionCard(
+    jurisdiction: Jurisdiction,
+    sighting: com.roadtrippin.shared.domain.PlateSighting?,
 ) {
-    val unseenFill = MaterialTheme.colorScheme.surfaceVariant
-    val outline = MaterialTheme.colorScheme.outline.copy(alpha = .72f)
-    val background = MaterialTheme.colorScheme.surface
-    Canvas(
-        modifier.background(background, RoundedCornerShape(18.dp))
-            .semantics {
-                contentDescription = "United States plate progress map, ${seen.count { it in JurisdictionCatalog.byCode && it !in setOf("BC", "MX") }} jurisdictions seen"
+    OutlinedCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(18.dp).clip(CircleShape).background(Color(jurisdiction.region.colorHex)))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(jurisdiction.name, fontWeight = FontWeight.Bold)
+                Text(jurisdiction.region.displayName, style = MaterialTheme.typography.bodySmall)
+                if (sighting == null) {
+                    Text("Plate not seen yet", style = MaterialTheme.typography.labelMedium)
+                } else {
+                    Text(
+                        "Seen ${PlatformServices.formatDateTime(sighting.firstSeenAt)}${sighting.location.placeName?.let { " • $it" } ?: ""}",
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
             }
-            .padding(8.dp)
+            Text(if (sighting == null) jurisdiction.code else "✓", fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun JournalMapSelectionCard(entry: JournalEntry, onOpen: () -> Unit) {
+    OutlinedCard(
+        Modifier.fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onOpen)
+            .semantics { contentDescription = "Open ${entry.title.ifBlank { "journal entry" }}" },
     ) {
-        val borderWidth = (size.minDimension / 520f).coerceAtLeast(0.75f)
-        data.states.forEach { state ->
-            val jurisdiction = JurisdictionCatalog.byCode.getValue(state.code)
-            val fill = if (state.code in seen) Color(jurisdiction.region.colorHex) else unseenFill
-            state.polygons.forEach { polygon ->
-                val path = Path().apply { fillType = PathFillType.EvenOdd }
-                addStateRing(path, state.code, polygon.outer, size.width, size.height)
-                polygon.holes.forEach { hole -> addStateRing(path, state.code, hole, size.width, size.height) }
-                drawPath(path, fill)
-                drawPath(path, outline, style = Stroke(borderWidth))
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(if (entry.kind == JournalEntryKind.STOP) "📍" else "📝", fontSize = 22.sp)
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    entry.title.ifBlank { if (entry.kind == JournalEntryKind.STOP) "Road stop" else "Road note" },
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    entry.location.placeName ?: PlatformServices.formatDateTime(entry.occurredAt),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                if (entry.body.isNotBlank()) Text(entry.body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text("Open ›", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+private fun clampMapOffset(offset: Offset, scale: Float, width: Float, height: Float): Offset {
+    if (scale <= 1f) return Offset.Zero
+    return Offset(
+        offset.x.coerceIn(width * (1f - scale), 0f),
+        offset.y.coerceIn(height * (1f - scale), 0f),
+    )
+}
+
+private fun projectNorthAmericaLocation(entry: JournalEntry, width: Float, height: Float): Offset =
+    projectNorthAmerica(entry.location.latitude!!, entry.location.longitude!!, width, height)
+
+private fun findStateAtPoint(
+    data: StateVectorData,
+    point: Offset,
+    width: Float,
+    height: Float,
+    dcHitRadius: Float,
+): String? {
+    val dc = projectNorthAmerica(38.9072, -77.0369, width, height)
+    if ((dc - point).getDistance() <= dcHitRadius) return "DC"
+    return data.states.firstOrNull { state ->
+        state.code != "DC" && state.polygons.any { polygon ->
+            pointInStateRing(point, state.code, polygon.outer, width, height) &&
+                polygon.holes.none { pointInStateRing(point, state.code, it, width, height) }
+        }
+    }?.code
+}
+
+internal fun pointInStateRing(
+    point: Offset,
+    code: String,
+    coordinates: List<List<Double>>,
+    width: Float,
+    height: Float,
+): Boolean {
+    if (coordinates.size < 3) return false
+    var inside = false
+    var previous = coordinates.lastIndex
+    coordinates.indices.forEach { index ->
+        val currentPoint = coordinates[index]
+        val previousPoint = coordinates[previous]
+        if (currentPoint.size >= 2 && previousPoint.size >= 2) {
+            val current = projectNorthAmericaStatePoint(code, currentPoint[0], currentPoint[1], width, height)
+            val prior = projectNorthAmericaStatePoint(code, previousPoint[0], previousPoint[1], width, height)
+            val crosses = (current.y > point.y) != (prior.y > point.y)
+            if (crosses) {
+                val crossingX = (prior.x - current.x) * (point.y - current.y) / (prior.y - current.y) + current.x
+                if (point.x < crossingX) inside = !inside
             }
         }
-
-        val dc = projectStatePoint("DC", -77.0369, 38.9072, size.width, size.height)
-        val callout = Offset(size.width * .93f, size.height * .21f)
-        drawLine(outline, dc, callout, strokeWidth = borderWidth * 1.5f)
-        val dcFill = if ("DC" in seen) Color(JurisdictionCatalog.byCode.getValue("DC").region.colorHex) else unseenFill
-        drawCircle(dcFill, radius = size.minDimension * .018f, center = callout)
-        drawCircle(outline, radius = size.minDimension * .018f, center = callout, style = Stroke(borderWidth))
+        previous = index
     }
+    return inside
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.addNorthAmericaStateRing(
+    path: Path,
+    code: String,
+    coordinates: List<List<Double>>,
+    width: Float,
+    height: Float,
+) {
+    coordinates.forEachIndexed { index, point ->
+        if (point.size < 2) return@forEachIndexed
+        val projected = projectNorthAmericaStatePoint(code, point[0], point[1], width, height)
+        if (index == 0) path.moveTo(projected.x, projected.y) else path.lineTo(projected.x, projected.y)
+    }
+    path.close()
+}
+
+private fun projectNorthAmericaStatePoint(
+    code: String,
+    longitude: Double,
+    latitude: Double,
+    width: Float,
+    height: Float,
+): Offset {
+    val normalizedLongitude = if (code == "AK" && longitude > 0.0) longitude - 360.0 else longitude
+    return projectNorthAmerica(latitude, normalizedLongitude, width, height)
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.addStateRing(
@@ -918,111 +1238,6 @@ private fun buildShareMapSvg(data: StateVectorData, trip: Trip): String {
         append("""<text x="70" y="848" fill="#FFF9ED" font-family="sans-serif" font-size="25" font-weight="700">$usSeen / 51 U.S. jurisdictions</text>""")
         append("""<text x="625" y="848" fill="#FFF9ED" font-family="sans-serif" font-size="23">B.C. ${if ("BC" in seen) "✓" else "—"}   Mexico ${if ("MX" in seen) "✓" else "—"}</text>""")
         append("</svg>")
-    }
-}
-
-@Composable
-private fun CountryBadge(label: String, seen: Boolean, icon: String) {
-    Surface(
-        color = if (seen) RoadGreen else MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(14.dp),
-    ) {
-        Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(icon, fontSize = 23.sp)
-            Text(label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
-            Text(if (seen) "Seen ✓" else "Not seen", style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
-
-@Composable
-private fun JournalPinMap(trip: Trip, modifier: Modifier = Modifier) {
-    var selected by remember { mutableStateOf<JournalEntry?>(null) }
-    var mapScale by remember { mutableStateOf(1f) }
-    var mapOffset by remember { mutableStateOf(Offset.Zero) }
-    val pinRadiusPx = with(LocalDensity.current) { 16.dp.toPx() }
-    Column(modifier) {
-        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(20.dp)).background(Color(0xFFDCEBF2))) {
-            Canvas(
-                Modifier.fillMaxSize()
-                    .semantics { contentDescription = "Offline North America journal map. Pinch to zoom and drag to pan." }
-                    .pointerInput(Unit) {
-                        detectTransformGestures { centroid, pan, zoom, _ ->
-                            val newScale = (mapScale * zoom).coerceIn(1f, 5f)
-                            val ratio = newScale / mapScale
-                            mapOffset = centroid + (mapOffset - centroid) * ratio + pan
-                            mapScale = newScale
-                        }
-                    }
-                    .pointerInput(trip.journal, mapScale, mapOffset) {
-                    detectTapGestures { tap ->
-                        val mapTap = Offset(
-                            (tap.x - mapOffset.x) / mapScale,
-                            (tap.y - mapOffset.y) / mapScale,
-                        )
-                        selected = trip.journal.filter { it.location.hasCoordinates }.minByOrNull { entry ->
-                            val point = projectNorthAmerica(entry.location.latitude!!, entry.location.longitude!!, size.width.toFloat(), size.height.toFloat())
-                            (point - mapTap).getDistance()
-                        }?.takeIf { entry ->
-                            val point = projectNorthAmerica(entry.location.latitude!!, entry.location.longitude!!, size.width.toFloat(), size.height.toFloat())
-                            (point - mapTap).getDistance() <= pinRadiusPx * 2 / mapScale
-                        }
-                    }
-                }
-            ) {
-                val land = Path().apply {
-                    moveTo(size.width * .12f, size.height * .18f)
-                    lineTo(size.width * .38f, size.height * .06f)
-                    lineTo(size.width * .72f, size.height * .15f)
-                    lineTo(size.width * .88f, size.height * .32f)
-                    lineTo(size.width * .78f, size.height * .52f)
-                    lineTo(size.width * .67f, size.height * .57f)
-                    lineTo(size.width * .61f, size.height * .80f)
-                    lineTo(size.width * .47f, size.height * .94f)
-                    lineTo(size.width * .36f, size.height * .75f)
-                    lineTo(size.width * .20f, size.height * .60f)
-                    close()
-                }
-                withTransform({
-                    translate(mapOffset.x, mapOffset.y)
-                    scale(mapScale, mapScale, Offset.Zero)
-                }) {
-                    drawPath(land, color = Color(0xFFE8DFBE))
-                    drawPath(land, color = Color(0xFF7E8A70), style = Stroke(2.dp.toPx() / mapScale))
-                    trip.journal.filter { it.location.hasCoordinates }.forEach { entry ->
-                        val point = projectNorthAmerica(entry.location.latitude!!, entry.location.longitude!!, size.width, size.height)
-                        drawCircle(if (entry.kind == JournalEntryKind.STOP) RoadOrange else Color(0xFFB07AA1), pinRadiusPx / mapScale, point)
-                        drawCircle(Color.White, pinRadiusPx / mapScale, point, style = Stroke(2.dp.toPx() / mapScale))
-                    }
-                }
-            }
-            if (trip.journal.none { it.location.hasCoordinates }) {
-                Text(
-                    "Journal pins appear here when a location is available.",
-                    Modifier.align(Alignment.Center).padding(28.dp),
-                    color = Color(0xFF30434E),
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("North America • offline", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
-            if (mapScale > 1f || mapOffset != Offset.Zero) {
-                TextButton(onClick = { mapScale = 1f; mapOffset = Offset.Zero }) { Text("Reset map") }
-            }
-        }
-        AnimatedVisibility(selected != null) {
-            selected?.let { entry ->
-                Card(Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text(entry.title.ifBlank { "Road note" }, fontWeight = FontWeight.Bold)
-                        Text(entry.location.placeName ?: "Saved coordinates")
-                        Text(entry.body, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
-        }
     }
 }
 

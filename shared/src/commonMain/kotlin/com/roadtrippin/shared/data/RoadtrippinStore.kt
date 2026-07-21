@@ -44,7 +44,6 @@ class RoadtrippinStore(
     var activeTripId by mutableStateOf<String?>(null)
         private set
     var screen by mutableStateOf(AppScreen.HOME)
-    var mapShowsJournal by mutableStateOf(false)
     var syncState by mutableStateOf(SyncState.LOCAL_ONLY)
         private set
     var confirmedCloudAccountId by mutableStateOf<String?>(null)

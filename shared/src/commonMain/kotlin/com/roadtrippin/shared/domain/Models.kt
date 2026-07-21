@@ -11,15 +11,11 @@ enum class Country(val displayName: String) {
 
 @Serializable
 enum class Region(val displayName: String, val colorHex: Long) {
-    PACIFIC_NORTHWEST("Pacific Northwest", 0xFF4E79A7),
-    PACIFIC("Pacific", 0xFF76B7B2),
-    MOUNTAIN_WEST("Mountain West", 0xFF59A14F),
-    SOUTHWEST("Southwest", 0xFFF28E2B),
-    GREAT_PLAINS("Great Plains", 0xFFEDC948),
-    MIDWEST("Midwest", 0xFFB07AA1),
-    NEW_ENGLAND("New England", 0xFFE15759),
-    MID_ATLANTIC("Mid-Atlantic", 0xFF9C755F),
-    SOUTHEAST("Southeast", 0xFFFF9DA7),
+    WEST("West", 0xFF4E8EA8),
+    MIDWEST("Midwest", 0xFF59A14F),
+    NORTHEAST("Northeast", 0xFF7953A2),
+    SOUTH("South", 0xFFE84A67),
+    DEEP_SOUTH("Deep South", 0xFFA61E2D),
     NON_US("International", 0xFF2A9D8F),
 }
 
@@ -127,4 +123,3 @@ data class AppSettings(
     val animationsEnabled: Boolean = true,
     val forceDarkMode: Boolean? = null,
 )
-
