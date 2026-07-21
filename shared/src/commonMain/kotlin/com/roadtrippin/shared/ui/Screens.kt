@@ -1018,11 +1018,14 @@ private fun CombinedTripMap(
     val textMeasurer = rememberTextMeasurer(cacheSize = 256)
     val pinRadiusPx = with(LocalDensity.current) { 8.dp.toPx() }
     val dcRadiusPx = with(LocalDensity.current) { 6.dp.toPx() }
+    val stateBoundaryWidthPx = with(LocalDensity.current) { 1.5.dp.toPx() }
+    val selectedStateBoundaryWidthPx = with(LocalDensity.current) { 3.dp.toPx() }
     val unseenFill = MaterialTheme.colorScheme.surfaceVariant
     val outline = MaterialTheme.colorScheme.outline.copy(alpha = .72f)
     val selectionColor = MaterialTheme.colorScheme.primary
     val isDark = MaterialTheme.colorScheme.surface.luminance() < .5f
     val ocean = if (isDark) Color(0xFF18303C) else Color(0xFFDCEBF2)
+    val stateBoundary = if (isDark) Color(0xFFD8E2E7) else Color(0xFF405159)
     val roadCasing = if (isDark) Color(0xFF172126) else Color(0xFFFFFCF4)
     val interstateRoad = if (isDark) Color(0xFF83B4FF) else Color(0xFF2F67B1)
     val usRouteRoad = if (isDark) Color(0xFFFFB36A) else Color(0xFFC65F18)
@@ -1192,11 +1195,12 @@ private fun CombinedTripMap(
                 }
 
                 visibleStatePaths.forEach { statePath ->
+                    val selected = statePath.code == selectedStateCode
                     drawPath(
                         statePath.path,
-                        if (statePath.code == selectedStateCode) selectionColor else outline,
+                        if (selected) selectionColor else stateBoundary,
                         style = Stroke(
-                            (if (statePath.code == selectedStateCode) borderWidth * 3f else borderWidth) / mapScale,
+                            (if (selected) selectedStateBoundaryWidthPx else stateBoundaryWidthPx) / mapScale,
                         ),
                     )
                 }
@@ -1205,10 +1209,12 @@ private fun CombinedTripMap(
                 val dcFill = if ("DC" in seen) Color(JurisdictionCatalog.byCode.getValue("DC").region.colorHex) else unseenFill
                 drawCircle(dcFill, dcRadiusPx / mapScale, dc)
                 drawCircle(
-                    if (selectedStateCode == "DC") selectionColor else outline,
+                    if (selectedStateCode == "DC") selectionColor else stateBoundary,
                     dcRadiusPx / mapScale,
                     dc,
-                    style = Stroke((if (selectedStateCode == "DC") 3.dp.toPx() else 1.5.dp.toPx()) / mapScale),
+                    style = Stroke(
+                        (if (selectedStateCode == "DC") selectedStateBoundaryWidthPx else stateBoundaryWidthPx) / mapScale,
+                    ),
                 )
 
             }
