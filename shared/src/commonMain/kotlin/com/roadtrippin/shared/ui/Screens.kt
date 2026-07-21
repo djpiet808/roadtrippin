@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.roadtrippin.shared.data.AppScreen
 import com.roadtrippin.shared.data.RoadtrippinStore
 import com.roadtrippin.shared.cloud.CloudServices
@@ -808,6 +809,10 @@ private fun JournalEditorDialog(
     var confirmDelete by remember(initialEntry?.id) { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+        ),
         title = {
             Text(
                 when {
