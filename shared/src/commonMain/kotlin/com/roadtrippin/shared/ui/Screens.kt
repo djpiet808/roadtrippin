@@ -553,6 +553,15 @@ fun JournalScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding:
                 showEditor = false
                 editingEntryId = null
             },
+            onDelete = editingEntry?.let { entry ->
+                {
+                    store.deleteJournalEntry(entry.id)
+                    showEditor = false
+                    viewingEntryId = null
+                    editingEntryId = null
+                    scope.launch { snackbar.showSnackbar("Journal entry deleted") }
+                }
+            },
         )
     }
     val viewingEntry = viewingEntryId?.let { id ->
@@ -565,10 +574,6 @@ fun JournalScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding:
             onEdit = {
                 viewingEntryId = null
                 editingEntryId = viewingEntry.id
-            },
-            onDelete = {
-                store.deleteJournalEntry(viewingEntry.id)
-                viewingEntryId = null
             },
         )
     }
@@ -611,7 +616,6 @@ private fun JournalEntryViewerDialog(
     entry: JournalEntry,
     onDismiss: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
 ) {
     var selectedPhoto by remember(entry.id) { mutableStateOf<JournalPhoto?>(null) }
     AlertDialog(
@@ -676,9 +680,6 @@ private fun JournalEntryViewerDialog(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-                TextButton(onClick = onDelete) {
-                    Text("Delete entry", color = MaterialTheme.colorScheme.error)
                 }
             }
         },
@@ -786,6 +787,7 @@ private fun JournalEditorDialog(
     initialEntry: JournalEntry?,
     onDismiss: () -> Unit,
     onSave: (JournalEntryKind, String, String, List<TagQuantity>, Long, com.roadtrippin.shared.domain.LocationStamp, List<JournalPhoto>) -> Unit,
+    onDelete: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val initialLocation = initialEntry?.location ?: com.roadtrippin.shared.domain.LocationStamp()
@@ -803,6 +805,7 @@ private fun JournalEditorDialog(
     var longitude by remember(initialEntry?.id) { mutableStateOf(initialLocation.longitude?.toString().orEmpty()) }
     var photos by remember(initialEntry?.id) { mutableStateOf(initialEntry?.photos.orEmpty()) }
     var loadingPhoto by remember(initialEntry?.id) { mutableStateOf(false) }
+    var confirmDelete by remember(initialEntry?.id) { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -892,6 +895,12 @@ private fun JournalEditorDialog(
                         TextButton(onClick = { photos = photos.filterNot { it.id == photo.id } }) { Text("Remove") }
                     }
                 }
+                if (initialEntry != null && onDelete != null) {
+                    HorizontalDivider(Modifier.padding(top = 4.dp))
+                    TextButton(onClick = { confirmDelete = true }) {
+                        Text("Delete entry", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
         },
         confirmButton = {
@@ -922,6 +931,25 @@ private fun JournalEditorDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+    if (confirmDelete && initialEntry != null && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete this journal entry?") },
+            text = { Text("The note and its attached photos will be removed from this trip.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        confirmDelete = false
+                        onDelete()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text("Keep entry") }
+            },
+        )
+    }
 }
 
 @Composable
@@ -1022,11 +1050,6 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
                 viewingEntryId = null
                 editingEntryId = viewingEntry.id
             },
-            onDelete = {
-                store.deleteJournalEntry(viewingEntry.id)
-                selectedEntryId = null
-                viewingEntryId = null
-            },
         )
     }
 
@@ -1053,6 +1076,13 @@ fun MapScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pad
                     snackbar.showSnackbar("Journal entry updated")
                 }
                 editingEntryId = null
+            },
+            onDelete = {
+                store.deleteJournalEntry(editingEntry.id)
+                selectedEntryId = null
+                viewingEntryId = null
+                editingEntryId = null
+                scope.launch { snackbar.showSnackbar("Journal entry deleted") }
             },
         )
     }
