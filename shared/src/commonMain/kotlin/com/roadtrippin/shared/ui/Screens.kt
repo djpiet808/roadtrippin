@@ -180,10 +180,6 @@ fun HomeScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pa
             ) {
                 Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Ready to roll?", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineSmall)
-                    Text(
-                        "You can add trip details later.",
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .85f),
-                    )
                     Button(
                         onClick = {
                             scope.launch {
