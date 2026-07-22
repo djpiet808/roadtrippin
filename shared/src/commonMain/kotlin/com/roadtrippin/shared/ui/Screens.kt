@@ -181,7 +181,7 @@ fun HomeScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pa
                 Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Ready to roll?", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.headlineSmall)
                     Text(
-                        "Start now—name the trip and add the details whenever you have time.",
+                        "You can add trip details later.",
                         color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .85f),
                     )
                     Button(
@@ -200,7 +200,7 @@ fun HomeScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: Pa
                         modifier = Modifier.fillMaxWidth().height(54.dp),
                     ) {
                         if (starting) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                        else Text("Skip naming & start")
+                        else Text("Start trippin")
                     }
                 }
             }
