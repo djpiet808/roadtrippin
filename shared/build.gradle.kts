@@ -48,6 +48,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.activity.compose)
+            implementation(libs.androidsvg)
             implementation(libs.ktor.client.okhttp)
         }
         iosMain.dependencies {

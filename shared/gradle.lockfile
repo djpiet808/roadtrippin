@@ -164,6 +164,7 @@ co.touchlab:kermit-iosarm64:2.1.0=iosArm64CompileKlibraries
 co.touchlab:kermit-iossimulatorarm64:2.1.0=iosSimulatorArm64CompileKlibraries
 co.touchlab:kermit:2.1.0=androidCompileClasspath,androidHostTestCompileClasspath,androidHostTestRuntimeClasspath,iosArm64CompileKlibraries,iosSimulatorArm64CompileKlibraries
 com.abovevacant:epitaph:0.1.1=androidHostTestRuntimeClasspath
+com.caverock:androidsvg:1.4=androidCompileClasspath,androidHostTestCompileClasspath,androidHostTestRuntimeClasspath
 com.google.auto.value:auto-value-annotations:1.6.3=kspAndroidMainProcessorClasspath,kspKotlinIosSimulatorArm64ProcessorClasspath
 com.google.auto:auto-common:1.2.1=kspAndroidMainProcessorClasspath,kspKotlinIosSimulatorArm64ProcessorClasspath
 com.google.code.findbugs:jsr305:3.0.2=kspAndroidMainProcessorClasspath,kspKotlinIosSimulatorArm64ProcessorClasspath

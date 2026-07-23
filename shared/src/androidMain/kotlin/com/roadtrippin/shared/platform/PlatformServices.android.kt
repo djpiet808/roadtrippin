@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ClipData
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.ImageDecoder
 import android.location.Geocoder
 import android.location.Location
@@ -28,6 +29,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.caverock.androidsvg.SVG
 import com.roadtrippin.shared.domain.JournalPhoto
 import com.roadtrippin.shared.domain.LocationStamp
 import java.io.File
@@ -253,11 +255,21 @@ actual object PlatformServices {
         val appContext = context ?: return
         ioScope.launch {
             val directory = File(appContext.cacheDir, "shared_maps").apply { mkdirs() }
-            val file = File(directory, "roadtrippin-map.svg").apply { writeText(svg) }
+            val file = File(directory, "roadtrippin-map.png")
+            val vector = SVG.getFromString(svg)
+            val bitmap = Bitmap.createBitmap(1200, 900, Bitmap.Config.ARGB_8888)
+            try {
+                vector.renderToCanvas(Canvas(bitmap))
+                check(file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }) {
+                    "Unable to encode shared map"
+                }
+            } finally {
+                bitmap.recycle()
+            }
             val uri = FileProvider.getUriForFile(appContext, "${appContext.packageName}.files", file)
             val intent = Intent.createChooser(
                 Intent(Intent.ACTION_SEND).apply {
-                    type = "image/svg+xml"
+                    type = "image/png"
                     putExtra(Intent.EXTRA_SUBJECT, title)
                     putExtra(Intent.EXTRA_TEXT, summary)
                     putExtra(Intent.EXTRA_STREAM, uri)
@@ -265,7 +277,7 @@ actual object PlatformServices {
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                 },
                 title,
-            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
             appContext.startActivity(intent)
         }
     }

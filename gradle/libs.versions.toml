@@ -13,6 +13,7 @@ supabase = "3.6.0"
 maplibre = "0.13.0"
 sentry = "0.27.0"
 ktor = "3.4.3"
+androidsvg = "1.4"
 
 [libraries]
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
@@ -29,6 +30,7 @@ supabase-postgrest = { module = "io.github.jan-tennert.supabase:postgrest-kt", v
 supabase-storage = { module = "io.github.jan-tennert.supabase:storage-kt", version.ref = "supabase" }
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }
+androidsvg = { module = "com.caverock:androidsvg", version.ref = "androidsvg" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
