@@ -1,10 +1,9 @@
 package com.roadtrippin.shared.platform
 
+import com.roadtrippin.shared.domain.CheerStyle
 import com.roadtrippin.shared.domain.LocationStamp
 import com.roadtrippin.shared.domain.JournalPhoto
 import kotlinx.coroutines.flow.Flow
-
-internal const val NEW_PLATE_CHEER = "Hazzah!"
 
 expect object PlatformServices {
     fun nowEpochMillis(): Long
@@ -19,7 +18,7 @@ expect object PlatformServices {
     fun observeConnectivity(): Flow<Boolean>
     val supportsNativeAppleSignIn: Boolean
     suspend fun requestAppleIdToken(): String?
-    fun celebrate(sound: Boolean, haptics: Boolean)
+    fun celebrate(sound: Boolean, haptics: Boolean, cheerStyle: CheerStyle)
     fun shareText(title: String, text: String)
     fun shareMapImage(title: String, svg: String, summary: String)
 }

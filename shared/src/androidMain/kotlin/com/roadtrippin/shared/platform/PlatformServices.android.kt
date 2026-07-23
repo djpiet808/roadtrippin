@@ -30,6 +30,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.caverock.androidsvg.SVG
+import com.roadtrippin.shared.domain.CheerStyle
 import com.roadtrippin.shared.domain.JournalPhoto
 import com.roadtrippin.shared.domain.LocationStamp
 import java.io.File
@@ -63,6 +64,7 @@ actual object PlatformServices {
     private var speech: TextToSpeech? = null
     private var speechReady = false
     private var pendingCheer = false
+    private var pendingCheerStyle = CheerStyle.ROADTRIP_RALLY
 
     fun initialize(activity: ComponentActivity) {
         val appContext = activity.applicationContext
@@ -72,10 +74,9 @@ actual object PlatformServices {
                 speechReady = status == TextToSpeech.SUCCESS
                 if (speechReady) {
                     speech?.language = Locale.US
-                    speech?.setSpeechRate(0.95f)
                     if (pendingCheer) {
                         pendingCheer = false
-                        speakNewPlateCheer()
+                        speakNewPlateCheer(pendingCheerStyle)
                     }
                 } else {
                     pendingCheer = false
@@ -205,7 +206,7 @@ actual object PlatformServices {
         }
     }
 
-    actual fun celebrate(sound: Boolean, haptics: Boolean) {
+    actual fun celebrate(sound: Boolean, haptics: Boolean, cheerStyle: CheerStyle) {
         val appContext = context ?: return
         if (haptics) {
             runCatching {
@@ -219,18 +220,21 @@ actual object PlatformServices {
             }
         }
         if (sound) {
-            runCatching(::speakNewPlateCheer)
+            runCatching { speakNewPlateCheer(cheerStyle) }
         }
     }
 
-    private fun speakNewPlateCheer() {
+    private fun speakNewPlateCheer(cheerStyle: CheerStyle) {
         val synthesizer = speech
         if (!speechReady || synthesizer == null) {
             pendingCheer = true
+            pendingCheerStyle = cheerStyle
             return
         }
+        synthesizer.setSpeechRate(cheerStyle.rateMultiplier)
+        synthesizer.setPitch(cheerStyle.pitchMultiplier)
         synthesizer.speak(
-            NEW_PLATE_CHEER,
+            cheerStyle.phrase,
             TextToSpeech.QUEUE_FLUSH,
             null,
             "roadtrippin-new-plate",

@@ -116,10 +116,31 @@ data class Achievement(
 enum class SyncState { LOCAL_ONLY, QUEUED, SYNCING, SYNCED, ERROR }
 
 @Serializable
+enum class CheerStyle(
+    val displayName: String,
+    val description: String,
+    val phrase: String,
+    val rateMultiplier: Float,
+    val pitchMultiplier: Float,
+) {
+    QUICK_SPARK("Quick Spark", "Short, bright, and snappy", "Huzzah!", 1.18f, 1.12f),
+    CLASSIC_CHEER("Classic Cheer", "A clear traditional victory call", "Huzzah!", 1.0f, 1.0f),
+    BIG_VICTORY("Big Victory", "Lower, broader, and triumphant", "Huzzah!", 0.86f, 0.88f),
+    HAPPY_BOUNCE("Happy Bounce", "High-energy and playful", "Huzzah!", 1.08f, 1.28f),
+    ROADTRIP_RALLY("Roadtrip Rally", "A lively new-plate callout", "Huzzah! New plate!", 1.08f, 1.12f),
+    WE_GOT_ONE("We Got One", "A friendly shared victory", "Huzzah! We got one!", 1.05f, 1.08f),
+    DOUBLE_HUZZAH("Double Huzzah", "Two quick cheers in a row", "Huzzah! Huzzah!", 1.14f, 1.16f),
+    WOO_HUZZAH("Woo Huzzah", "Extra excited from the first word", "Woo-hoo! Huzzah!", 1.12f, 1.18f),
+    GRAND_HUZZAH("Grand Huzzah", "Long, theatrical, and victorious", "Huuuzzah!", 0.78f, 0.92f),
+    MAXIMUM_TRIPPIN("Maximum Trippin", "The biggest celebration of the bunch", "Huzzah! New plate! Let's go!", 1.18f, 1.22f),
+}
+
+@Serializable
 data class AppSettings(
     val safetyAccepted: Boolean = false,
     val soundEnabled: Boolean = true,
     val hapticsEnabled: Boolean = true,
     val animationsEnabled: Boolean = true,
     val forceDarkMode: Boolean? = null,
+    val cheerStyle: CheerStyle = CheerStyle.ROADTRIP_RALLY,
 )

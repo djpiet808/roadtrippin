@@ -1,5 +1,6 @@
 package com.roadtrippin.shared.platform
 
+import com.roadtrippin.shared.domain.CheerStyle
 import com.roadtrippin.shared.domain.LocationStamp
 import com.roadtrippin.shared.domain.JournalPhoto
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -13,6 +14,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import platform.CoreGraphics.CGRectMake
+import platform.AVFAudio.AVSpeechBoundary
 import platform.AVFAudio.AVSpeechSynthesizer
 import platform.AVFAudio.AVSpeechUtterance
 import platform.CoreLocation.CLAuthorizationStatus
@@ -200,13 +202,18 @@ actual object PlatformServices {
         }
     }
 
-    actual fun celebrate(sound: Boolean, haptics: Boolean) {
+    actual fun celebrate(sound: Boolean, haptics: Boolean, cheerStyle: CheerStyle) {
         dispatch_async(dispatch_get_main_queue()) {
             if (haptics) {
                 UIImpactFeedbackGenerator(UIImpactFeedbackStyle.UIImpactFeedbackStyleMedium).impactOccurred()
             }
             if (sound) {
-                speechSynthesizer.speakUtterance(AVSpeechUtterance(string = NEW_PLATE_CHEER))
+                speechSynthesizer.stopSpeakingAtBoundary(AVSpeechBoundary.AVSpeechBoundaryImmediate)
+                val utterance = AVSpeechUtterance(string = cheerStyle.phrase).apply {
+                    rate = 0.5f * cheerStyle.rateMultiplier
+                    pitchMultiplier = cheerStyle.pitchMultiplier
+                }
+                speechSynthesizer.speakUtterance(utterance)
             }
         }
     }

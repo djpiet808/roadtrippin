@@ -2,6 +2,8 @@ package com.roadtrippin.shared
 
 import com.roadtrippin.shared.data.RoadtrippinStore
 import com.roadtrippin.shared.cloud.winningSide
+import com.roadtrippin.shared.domain.AppSettings
+import com.roadtrippin.shared.domain.CheerStyle
 import com.roadtrippin.shared.domain.JournalEntryKind
 import com.roadtrippin.shared.domain.JournalPhoto
 import com.roadtrippin.shared.domain.LocationStamp
@@ -13,6 +15,12 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RoadtrippinStoreTest {
+    @Test
+    fun cheerAuditionOffersTenStylesWithAnEnthusiasticDefault() {
+        assertEquals(10, CheerStyle.entries.size)
+        assertEquals(CheerStyle.ROADTRIP_RALLY, AppSettings().cheerStyle)
+    }
+
     @Test
     fun quickStartCreatesOneActiveUnnamedTripWithoutLocation() {
         val store = RoadtrippinStore(repository = null)

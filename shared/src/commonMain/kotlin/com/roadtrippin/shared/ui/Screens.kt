@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -99,6 +100,7 @@ import com.roadtrippin.shared.data.AppScreen
 import com.roadtrippin.shared.data.RoadtrippinStore
 import com.roadtrippin.shared.cloud.CloudServices
 import com.roadtrippin.shared.domain.Achievement
+import com.roadtrippin.shared.domain.CheerStyle
 import com.roadtrippin.shared.domain.Country
 import com.roadtrippin.shared.domain.JournalEntry
 import com.roadtrippin.shared.domain.JournalEntryKind
@@ -387,7 +389,11 @@ fun PlatesScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, padding: 
                                     }
                                 }
                             }
-                            PlatformServices.celebrate(store.settings.soundEnabled, store.settings.hapticsEnabled)
+                            PlatformServices.celebrate(
+                                store.settings.soundEnabled,
+                                store.settings.hapticsEnabled,
+                                store.settings.cheerStyle,
+                            )
                             val result = snackbar.showSnackbar(
                                 "${jurisdiction.name} spotted!",
                                 actionLabel = "Undo",
@@ -2149,8 +2155,43 @@ fun SettingsScreen(store: RoadtrippinStore, padding: PaddingValues) {
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         AppHeader("Settings", "Roadtrippin preferences", onBack = { store.screen = if (store.activeTrip != null) AppScreen.DASHBOARD else AppScreen.HOME })
-        SettingSwitch("Sound", "Say \u201cHazzah!\u201d for a new plate", store.settings.soundEnabled) {
+        SettingSwitch("Sound", "Play your selected Huzzah for a new plate", store.settings.soundEnabled) {
             store.updateSettings { settings -> settings.copy(soundEnabled = it) }
+        }
+        Text("Choose your Huzzah", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+            "Tap an option to select it and hear a preview on this phone.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        CheerStyle.entries.forEachIndexed { index, style ->
+            val selected = store.settings.cheerStyle == style
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth().selectable(selected = selected, role = Role.RadioButton) {
+                    store.updateSettings { it.copy(cheerStyle = style) }
+                    PlatformServices.celebrate(sound = true, haptics = false, cheerStyle = style)
+                },
+                colors = CardDefaults.cardColors(
+                    containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                ),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    RadioButton(selected = selected, onClick = null)
+                    Column(Modifier.weight(1f)) {
+                        Text("${index + 1}. ${style.displayName}", fontWeight = FontWeight.Bold)
+                        Text(
+                            style.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text("▶", color = MaterialTheme.colorScheme.primary)
+                }
+            }
         }
         SettingSwitch("Haptics", "Use a short vibration for a new plate", store.settings.hapticsEnabled) {
             store.updateSettings { settings -> settings.copy(hapticsEnabled = it) }
