@@ -286,9 +286,29 @@ fun DashboardScreen(store: RoadtrippinStore, snackbar: SnackbarHostState, paddin
         val earned = store.achievementsFor(trip).count { it.earned }
         DashboardCard("🏆", "Awards", "$earned badges earned", Color(0xFFB07AA1)) { store.screen = AppScreen.AWARDS }
         OutlinedButton(
-            onClick = { PlatformServices.shareText(trip.displayName, store.shareSummary(trip)) },
+            onClick = {
+                scope.launch {
+                    val mapData = runCatching {
+                        withContext(Dispatchers.Default) {
+                            vectorJson.decodeFromString<StateVectorData>(
+                                Res.readBytes("files/us_states_20m.json").decodeToString()
+                            )
+                        }
+                    }.getOrNull()
+                    if (mapData == null) {
+                        PlatformServices.shareText(trip.displayName, store.shareSummary(trip))
+                        snackbar.showSnackbar("Map unavailable; shared the trip summary instead")
+                    } else {
+                        PlatformServices.shareMapImage(
+                            title = "${trip.displayName} map",
+                            svg = buildShareMapSvg(mapData, trip),
+                            summary = store.shareSummary(trip),
+                        )
+                    }
+                }
+            },
             modifier = Modifier.fillMaxWidth().height(50.dp),
-        ) { Text("Share trip summary") }
+        ) { Text("Share trip map & summary") }
         Button(
             onClick = {
                 scope.launch {
